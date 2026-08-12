@@ -1,0 +1,52 @@
+:root {
+  color: #3d4d46;
+  background: #f7dca8;
+  font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#game {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% 30%, #fff7dd 0, #f7dca8 55%, #dfb879 100%);
+}
+
+canvas {
+  display: block;
+  margin: auto;
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 0 44px rgb(92 68 39 / 20%);
+}
+
+#rotate-note {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 2rem;
+  color: #355347;
+  background: #fff0c7;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+@media (orientation: portrait) and (max-width: 700px) {
+  #rotate-note {
+    display: grid;
+  }
+}
