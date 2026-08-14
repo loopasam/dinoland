@@ -1,6 +1,6 @@
 # Dinoland
 
-A gentle browser toy where a young child places, hatches, and cares for a growing herd of slowly roaming baby triceratops in a bounded, single-screen field. Every dinosaur has its own repeating bath and play needs, while each four-heart round unlocks another draggable egg.
+A browser prototype for placing, hatching, and caring for a growing herd of independently managed dinosaurs in a bounded, single-screen field. The current build deliberately uses labeled placeholder geometry and visible collision shapes so the interaction model can be tested before final art is introduced.
 
 ## Play
 

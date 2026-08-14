@@ -40,6 +40,24 @@ describe('GameModel', () => {
     expect(model.newEggUnlocked).toBe(true);
   });
 
+  it('keeps reward eggs and per-dinosaur needs scalable across many rounds', () => {
+    const model = new GameModel({ hatched: true, dinoCount: 1, heartTarget: 4 });
+
+    for (let expectedDinoCount = 2; expectedDinoCount <= 50; expectedDinoCount += 1) {
+      for (let heart = 0; heart < 4; heart += 1) {
+        const dinoIndex = heart % model.dinoCount;
+        expect(model.requestNeed(dinoIndex, heart % 2 === 0 ? 'bath' : 'play')).not.toBeNull();
+        expect(model.fulfillNeed(dinoIndex, model.needFor(dinoIndex)!)).toBe(true);
+      }
+      expect(model.newEggUnlocked).toBe(true);
+      expect([model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg()]).toEqual([1, 2, 3, 4]);
+      expect(model.finishRewardHatching()).toBe(expectedDinoCount);
+      expect(model.hearts).toBe(0);
+      expect(model.heartTarget).toBe(4);
+      expect(model.requestNeed(expectedDinoCount - 1)).not.toBeNull();
+    }
+  });
+
   it('loads legacy progress and saves scalable progress', () => {
     const legacy = JSON.stringify({ hatched: true, hearts: 2, secondEggHatched: true });
     expect(loadProgress({ getItem: () => legacy })).toEqual({ hatched: true, hearts: 0, heartTarget: 4, dinoCount: 2 });

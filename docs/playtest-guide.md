@@ -1,6 +1,6 @@
 # Field prototype playtest guide
 
-Open the game with cleared local storage and avoid explaining the controls. Sit nearby, but intervene only if the child becomes frustrated.
+Open the game with cleared local storage. This build intentionally uses placeholder geometry and visible collision outlines; evaluate mechanics rather than visual appeal. Avoid explaining the controls and intervene only if the child becomes frustrated.
 
 Observe:
 
@@ -20,6 +20,6 @@ Observe:
 - Does random roaming make the dinosaur feel alive?
 - Where does attention drop or confusion appear?
 
-Click the circular arrow in the upper-right corner to immediately reset the entire game to a fresh egg.
+Click the reset arrow in the upper-right corner to immediately reset the entire game to a fresh egg.
 
 Do not ask “Do you like it?” during play. Repeated voluntary interaction is the strongest signal.

@@ -1,8 +1,10 @@
-# Dinoland art guide
+# Dinoland placeholder visual guide
+
+> Status: final art is intentionally deferred. The live prototype uses code-generated geometry and visible collision bounds so playtesting can focus on mechanics.
 
 ## Direction
 
-Dinoland uses a warm, hand-painted 2D storybook style with a fixed three-quarter top-down field view. Shapes are rounded, silhouettes are readable at tablet size, and nothing is sharp, threatening, or visually noisy.
+The current implementation uses a flat debug field, a visible grid, colored dinosaur boxes, egg ellipses, a ball circle, and a circular bath. Each collider is outlined onscreen. These placeholders retain the intended fixed three-quarter top-down game layout without implying that the art direction is final.
 
 ## Palette
 
@@ -35,6 +37,6 @@ The baby triceratops has an oversized head and frill, short sturdy legs, three c
 - Character/object sources: square images, then transparent PNG cutouts
 - Keep generated source files out of runtime assets; commit only optimized final assets
 
-## Asset prompts
+## Future art pass
 
-Final prompts and generation method are recorded in `public/assets/ASSETS.md` alongside the shipped files.
+The palette and character notes below are retained as possible future direction, not as requirements for the current mechanics prototype. Runtime textures should only be reintroduced after the click, drag, collision, need, scoring, and repeated hatching loops are validated.

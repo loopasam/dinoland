@@ -6,7 +6,7 @@ Test whether a young child enjoys hatching and caring for a small baby tricerato
 
 ## Core experience
 
-The whole prototype takes place on one three-quarter top-down meadow screen. The map contains a small egg, a permanent pond, a bottom item tray, and a large safe roaming area enclosed by scenery and a fence.
+The whole prototype takes place on one fixed field screen. The current mechanics build represents the map, eggs, bath, inventory item, and dinosaurs with simple geometry and visible collision outlines. It contains a small egg, a permanent bath, a bottom item tray, and a large bounded roaming area.
 
 ## Player loop
 
@@ -42,7 +42,7 @@ The whole prototype takes place on one three-quarter top-down meadow screen. The
 
 ## Interaction principles
 
-- No reading is required to understand a need.
+- Need icons remain visual; debug labels only identify prototype objects and score state.
 - Every target is large and forgiving.
 - A valid care action gets immediate sound, motion, particles, and heart feedback.
 - The dinosaur cannot be harmed, lost, or dragged out of bounds.

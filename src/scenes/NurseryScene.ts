@@ -5,17 +5,23 @@ import { DinoNeed, GameModel, loadProgress, saveProgress, SAVE_KEY } from '../ga
 const WIDTH = 1280;
 const HEIGHT = 720;
 const FIELD = { left: 155, right: 1125, top: 145, bottom: 545 };
-const DINO_SCALE = 0.112;
-const DINO_DRAG_SCALE = 0.12;
+const DINO_SCALE = 1;
+const DINO_DRAG_SCALE = 1.08;
+const DINO_BATH_SCALE = 0.86;
+const EGG_SCALE = 1;
+const REWARD_EGG_SCALE = 0.72;
+const BALL_TRAY_SCALE = 1;
+const BALL_FIELD_SCALE = 1.06;
 const DINO_RADIUS = 55;
 const PLAY_COLLISION_RADIUS = 88;
 const POND_COLLISION_RADIUS = 132;
 const NEED_BUBBLE_DEPTH = 680;
+const REWARD_EGG_DEPTH = 640;
 const EGG_HOME = { x: 490, y: 360 };
 const REWARD_EGG_HOME = { x: 760, y: 285 };
-const POND = { x: 1015, y: 485 };
+const POND = { x: 970, y: 410 };
 const BALL_HOME = { x: 86, y: 650 };
-const DINO_TINTS = [0xffffff, 0xe5f7ff, 0xffedcf, 0xf1e2ff, 0xe3f4d5];
+const DINO_TINTS = [0x63c7d3, 0xf2a65a, 0x9bcf6b, 0xc89fe7, 0xe77f8f];
 
 interface DinoEntity {
   index: number;
@@ -25,6 +31,7 @@ interface DinoEntity {
   dragging: boolean;
   reacting: boolean;
   touchingPond: boolean;
+  pausedForTest?: boolean;
   needTimer?: Phaser.Time.TimerEvent;
   roamTimer?: Phaser.Time.TimerEvent;
 }
@@ -53,21 +60,15 @@ export class NurseryScene extends Phaser.Scene {
   private ballPlaced = false;
   private draggingBall = false;
   private lastBallBump = 0;
+  private collisionDebug!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('NurseryScene');
   }
 
-  preload(): void {
-    this.load.image('field', `${import.meta.env.BASE_URL}assets/field-background.png`);
-    this.load.image('egg', `${import.meta.env.BASE_URL}assets/egg.webp`);
-    this.load.image('dino', `${import.meta.env.BASE_URL}assets/baby-triceratops.webp`);
-    this.load.image('ball', `${import.meta.env.BASE_URL}assets/ball.webp`);
-    this.load.image('pond', `${import.meta.env.BASE_URL}assets/bath.webp`);
-  }
-
   create(): void {
     this.model = new GameModel(loadProgress(localStorage));
+    this.createPlaceholderTextures();
     this.createMap();
     this.createPond();
     this.createItemTray();
@@ -100,9 +101,37 @@ export class NurseryScene extends Phaser.Scene {
       pauseDino: (dinoIndex) => {
         const dino = this.dinos[dinoIndex];
         if (!dino) return;
+        dino.pausedForTest = true;
         this.tweens.killTweensOf(dino.sprite);
         dino.roamTimer?.remove(false);
         dino.roamTimer = undefined;
+        dino.sprite.setScale(DINO_SCALE).setAlpha(1).setAngle(0);
+      },
+      fulfillActiveNeed: (dinoIndex) => {
+        const dino = this.dinos[dinoIndex];
+        const need = this.model.needFor(dinoIndex);
+        if (!dino || !need || !this.model.fulfillNeed(dinoIndex, need)) return false;
+        this.completeNeed(dino);
+        return true;
+      },
+      placeDino: (dinoIndex, x, y) => {
+        const dino = this.dinos[dinoIndex];
+        if (!dino) return false;
+        dino.pausedForTest = true;
+        dino.reacting = false;
+        this.tweens.killTweensOf(dino.sprite);
+        dino.roamTimer?.remove(false);
+        dino.dragging = true;
+        dino.sprite.setPosition(
+          Phaser.Math.Clamp(x, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS),
+          Phaser.Math.Clamp(y, FIELD.top + DINO_RADIUS, FIELD.bottom - DINO_RADIUS),
+        );
+        this.resolveDinoSeparation(dino);
+        this.resolvePondCollision(dino);
+        dino.dragging = false;
+        if (dino.touchingPond && this.model.needFor(dino.index) === 'bath') this.bathDino(dino);
+        else this.resolveWorldCollisions();
+        return true;
       },
     };
   }
@@ -119,6 +148,7 @@ export class NurseryScene extends Phaser.Scene {
     if (this.ballPlaced) this.ball.setDepth(20 + Math.round(this.ball.y));
     this.resolveDinoSeparation();
     this.resolveWorldCollisions();
+    this.drawCollisionDebug();
   }
 
   private debugState() {
@@ -168,30 +198,88 @@ export class NurseryScene extends Phaser.Scene {
     };
   }
 
-  private createMap(): void {
-    this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x6d9d45).setDepth(-3);
-    this.add.rectangle(WIDTH / 2 + 5, HEIGHT / 2 + 8, 1170, 660, 0x345d35, 0.25).setDepth(-2);
-    this.add.image(WIDTH / 2, HEIGHT / 2, 'field').setDisplaySize(1160, 650).setDepth(-1);
-    this.add.graphics().setDepth(6).lineStyle(4, 0x466f3f, 0.38).strokeRoundedRect(
-      FIELD.left, FIELD.top, FIELD.right - FIELD.left, FIELD.bottom - FIELD.top, 24,
+  private createPlaceholderTextures(): void {
+    if (this.textures.exists('dino')) return;
+    const graphics = this.make.graphics({ x: 0, y: 0 });
+
+    graphics.fillStyle(0xffffff, 1).fillRect(4, 4, 102, 102);
+    graphics.lineStyle(5, 0x182027, 1).strokeRect(4, 4, 102, 102);
+    graphics.lineStyle(3, 0x182027, 0.75).lineBetween(4, 4, 106, 106).lineBetween(106, 4, 4, 106);
+    graphics.generateTexture('dino', 110, 110);
+    graphics.clear();
+
+    graphics.fillStyle(0xe3aa55, 1).fillEllipse(40, 52, 72, 96);
+    graphics.lineStyle(5, 0x182027, 1).strokeEllipse(40, 52, 72, 96);
+    graphics.lineStyle(2, 0x182027, 0.55).lineBetween(40, 7, 40, 97);
+    graphics.generateTexture('egg', 80, 104);
+    graphics.clear();
+
+    graphics.fillStyle(0xe06c75, 1).fillCircle(30, 30, 27);
+    graphics.lineStyle(5, 0x182027, 1).strokeCircle(30, 30, 27);
+    graphics.lineStyle(3, 0x182027, 0.7).lineBetween(11, 11, 49, 49).lineBetween(49, 11, 11, 49);
+    graphics.generateTexture('ball', 60, 60);
+    graphics.clear();
+
+    graphics.fillStyle(0x2b7a9b, 0.75).fillCircle(POND_COLLISION_RADIUS, POND_COLLISION_RADIUS, POND_COLLISION_RADIUS - 4);
+    graphics.lineStyle(6, 0x8ed8f8, 1).strokeCircle(POND_COLLISION_RADIUS, POND_COLLISION_RADIUS, POND_COLLISION_RADIUS - 4);
+    graphics.lineStyle(2, 0xd8f5ff, 0.55).strokeCircle(POND_COLLISION_RADIUS, POND_COLLISION_RADIUS, POND_COLLISION_RADIUS - 22);
+    graphics.generateTexture('pond', POND_COLLISION_RADIUS * 2, POND_COLLISION_RADIUS * 2);
+    graphics.destroy();
+  }
+
+  private drawCollisionDebug(): void {
+    this.collisionDebug.clear();
+    this.collisionDebug.lineStyle(4, 0x9aaab4, 1).strokeRect(
+      FIELD.left, FIELD.top, FIELD.right - FIELD.left, FIELD.bottom - FIELD.top,
     );
+    this.collisionDebug.lineStyle(3, 0x55c2e8, 0.9).strokeCircle(POND.x, POND.y, POND_COLLISION_RADIUS);
+    for (const dino of this.dinos) {
+      if (!dino.sprite.visible) continue;
+      this.collisionDebug.lineStyle(3, 0xffffff, 0.85).strokeCircle(dino.sprite.x, dino.sprite.y, DINO_RADIUS);
+    }
+    if (this.ballPlaced) {
+      this.collisionDebug.lineStyle(3, 0xff7882, 0.9).strokeCircle(this.ball.x, this.ball.y, PLAY_COLLISION_RADIUS - DINO_RADIUS);
+    }
+  }
+
+  private createMap(): void {
+    this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x161b22).setDepth(-3);
+    this.add.rectangle(
+      (FIELD.left + FIELD.right) / 2,
+      (FIELD.top + FIELD.bottom) / 2,
+      FIELD.right - FIELD.left,
+      FIELD.bottom - FIELD.top,
+      0x26323a,
+    ).setDepth(-2);
+    const grid = this.add.graphics().setDepth(-1).lineStyle(1, 0x5f6f7a, 0.24);
+    for (let x = FIELD.left + 50; x < FIELD.right; x += 50) {
+      grid.lineBetween(x, FIELD.top, x, FIELD.bottom);
+    }
+    for (let y = FIELD.top + 50; y < FIELD.bottom; y += 50) {
+      grid.lineBetween(FIELD.left, y, FIELD.right, y);
+    }
+    this.add.text(FIELD.left, FIELD.top - 32, 'PLAY FIELD / COLLISION DEBUG', {
+      color: '#93a4af', fontFamily: 'monospace', fontSize: '18px',
+    }).setDepth(5);
+    this.collisionDebug = this.add.graphics().setDepth(610);
   }
 
   private createPond(): void {
-    const glow = this.add.ellipse(POND.x, POND.y + 22, 220, 105, 0xbceef1, 0.24).setDepth(8);
-    this.tweens.add({ targets: glow, scaleX: 1.08, scaleY: 1.08, alpha: 0.42, duration: 1600, yoyo: true, repeat: -1 });
-    this.add.image(POND.x, POND.y, 'pond').setScale(0.18).setDepth(10);
+    this.add.image(POND.x, POND.y, 'pond').setDepth(10);
+    this.add.text(POND.x, POND.y, 'BATH', {
+      color: '#d8f5ff', fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(11);
   }
 
   private createItemTray(): void {
-    this.add.rectangle(176, 656, 286, 92, 0x35583d, 0.22).setDepth(700);
-    this.add.rectangle(170, 650, 286, 92, 0xfff4cf, 0.96).setStrokeStyle(5, 0xffffff, 0.92).setDepth(701);
+    this.add.rectangle(170, 650, 286, 92, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1).setDepth(701);
     [86, 170, 254].forEach((x, index) => {
-      this.add.circle(x, 650, 34, index === 0 ? 0xe7d5a7 : 0xd9d0b5, index === 0 ? 0.5 : 0.28)
-        .setStrokeStyle(2, 0xb9aa84, 0.35).setDepth(702);
-      if (index > 0) this.add.text(x, 650, '•', { color: '#9c987f', fontSize: '30px' }).setOrigin(0.5).setAlpha(0.45).setDepth(703);
+      this.add.rectangle(x, 650, 64, 64, 0x161b22, 0.7)
+        .setStrokeStyle(2, index === 0 ? 0xe3aa55 : 0x53616b, 1).setDepth(702);
+      if (index > 0) this.add.text(x, 650, 'EMPTY', { color: '#71818c', fontFamily: 'monospace', fontSize: '11px' })
+        .setOrigin(0.5).setDepth(703);
     });
-    this.ball = this.add.image(BALL_HOME.x, BALL_HOME.y, 'ball').setScale(0.071).setDepth(704)
+    this.ball = this.add.image(BALL_HOME.x, BALL_HOME.y, 'ball').setScale(BALL_TRAY_SCALE).setDepth(704)
       .setInteractive({ useHandCursor: true, draggable: true });
     this.input.setDraggable(this.ball);
     this.ball.on('dragstart', () => {
@@ -212,12 +300,13 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private createEggs(): void {
-    this.egg = this.add.image(EGG_HOME.x, EGG_HOME.y, 'egg').setScale(0.125).setDepth(360);
+    this.egg = this.add.image(EGG_HOME.x, EGG_HOME.y, 'egg').setScale(EGG_SCALE).setDepth(360);
     this.crack = this.add.graphics().setDepth(365);
     this.setupEggDrag(this.egg, false);
 
-    this.rewardEgg = this.add.image(REWARD_EGG_HOME.x, REWARD_EGG_HOME.y, 'egg').setScale(0.09).setDepth(320).setVisible(false);
-    this.rewardCrack = this.add.graphics().setDepth(325);
+    this.rewardEgg = this.add.image(REWARD_EGG_HOME.x, REWARD_EGG_HOME.y, 'egg')
+      .setScale(REWARD_EGG_SCALE).setDepth(REWARD_EGG_DEPTH).setVisible(false);
+    this.rewardCrack = this.add.graphics().setDepth(REWARD_EGG_DEPTH + 5);
     this.setupEggDrag(this.rewardEgg, true);
   }
 
@@ -259,11 +348,10 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private createProgress(): void {
-    this.add.rectangle(154, 67, 248, 76, 0x35583d, 0.2).setDepth(800);
-    this.add.rectangle(148, 61, 248, 76, 0xfff4cf, 0.96).setStrokeStyle(4, 0xffffff, 0.9).setDepth(801);
-    this.add.text(48, 40, '♥', { color: '#ef6d82', fontSize: '39px', fontFamily: 'Arial Rounded MT Bold, sans-serif' }).setDepth(802);
-    this.heartLabel = this.add.text(96, 43, '', {
-      color: '#46624f', fontSize: '29px', fontStyle: 'bold', fontFamily: 'Arial Rounded MT Bold, sans-serif',
+    this.add.rectangle(148, 61, 248, 76, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1).setDepth(801);
+    this.add.text(40, 34, 'SCORE', { color: '#93a4af', fontSize: '16px', fontFamily: 'monospace' }).setDepth(802);
+    this.heartLabel = this.add.text(40, 54, '', {
+      color: '#ffffff', fontSize: '25px', fontStyle: 'bold', fontFamily: 'monospace',
     }).setDepth(802);
     this.updateProgress(false);
   }
@@ -277,12 +365,11 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private makeRoundButton(x: number, y: number, radius: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
-    const shadow = this.add.circle(4, 6, radius, 0x35583d, 0.22);
-    const circle = this.add.circle(0, 0, radius, 0xfff4cf, 0.96).setStrokeStyle(4, 0xffffff, 0.92)
+    const circle = this.add.rectangle(0, 0, radius * 2, radius * 2, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1)
       .setInteractive({ useHandCursor: true }).setName('hit');
-    const text = this.add.text(0, -2, label, { color: '#46624f', fontSize: `${Math.round(radius * 1.15)}px`, fontStyle: 'bold' })
+    const text = this.add.text(0, -2, label, { color: '#ffffff', fontSize: `${Math.round(radius * 1.15)}px`, fontStyle: 'bold' })
       .setOrigin(0.5).setName('label');
-    const button = this.add.container(x, y, [shadow, circle, text]).setDepth(850);
+    const button = this.add.container(x, y, [circle, text]).setDepth(850);
     circle.on('pointerdown', onClick);
     return button;
   }
@@ -324,7 +411,7 @@ export class NurseryScene extends Phaser.Scene {
     if (stage < 4) this.sounds.egg(stage);
     const release = (delay: number) => this.time.delayedCall(delay, () => {
       if (reward) this.rewardEggBusy = false; else this.eggBusy = false;
-      egg.setAngle(0).setScale(reward ? 0.09 : 0.125);
+      egg.setAngle(0).setScale(reward ? REWARD_EGG_SCALE : EGG_SCALE);
       if (reward && this.pendingRewardEggTap) {
         this.pendingRewardEggTap = false;
         this.lastRewardEggTap = -Infinity;
@@ -340,7 +427,8 @@ export class NurseryScene extends Phaser.Scene {
       release(400);
     } else if (stage === 2) {
       this.drawCracks(egg, crack, false, reward);
-      this.tweens.add({ targets: egg, scaleX: reward ? 0.1 : 0.137, scaleY: reward ? 0.08 : 0.113, duration: 110, yoyo: true });
+      const baseScale = reward ? REWARD_EGG_SCALE : EGG_SCALE;
+      this.tweens.add({ targets: egg, scaleX: baseScale * 1.1, scaleY: baseScale * 0.9, duration: 110, yoyo: true });
       release(460);
     } else if (stage === 3) {
       this.drawCracks(egg, crack, true, reward);
@@ -368,7 +456,7 @@ export class NurseryScene extends Phaser.Scene {
     this.pendingEggTap = false;
     this.sounds.hatch();
     this.tweens.add({
-      targets: this.egg, angle: { from: -10, to: 10 }, scale: 0.14, duration: 80, yoyo: true, repeat: 4,
+      targets: this.egg, angle: { from: -10, to: 10 }, scale: EGG_SCALE * 1.12, duration: 80, yoyo: true, repeat: 4,
       onComplete: () => {
         this.burstShell(point.x, point.y);
         this.egg.setVisible(false);
@@ -396,7 +484,7 @@ export class NurseryScene extends Phaser.Scene {
     this.pendingRewardEggTap = false;
     this.sounds.hatch();
     this.tweens.add({
-      targets: this.rewardEgg, angle: { from: -10, to: 10 }, scale: 0.105, duration: 80, yoyo: true, repeat: 4,
+      targets: this.rewardEgg, angle: { from: -10, to: 10 }, scale: REWARD_EGG_SCALE * 1.16, duration: 80, yoyo: true, repeat: 4,
       onComplete: () => {
         this.burstShell(point.x, point.y);
         this.rewardEgg.setVisible(false);
@@ -422,14 +510,19 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private resetRewardEgg(): void {
-    this.rewardEgg.setPosition(REWARD_EGG_HOME.x, REWARD_EGG_HOME.y).setScale(0.09).setAlpha(1).setAngle(0).setVisible(false);
+    this.rewardEgg.setPosition(REWARD_EGG_HOME.x, REWARD_EGG_HOME.y)
+      .setScale(REWARD_EGG_SCALE).setAlpha(1).setAngle(0).setDepth(REWARD_EGG_DEPTH).setVisible(false);
+  }
+
+  private armRewardEgg(): void {
     this.rewardEgg.setInteractive({ useHandCursor: true, draggable: true });
     this.input.setDraggable(this.rewardEgg);
   }
 
   private refreshRewardEgg(): void {
     if (!this.model.newEggUnlocked || this.model.rewardEggHatching) return;
-    this.rewardEgg.setVisible(true).setAlpha(1).setScale(0.09);
+    this.armRewardEgg();
+    this.rewardEgg.setVisible(true).setAlpha(1).setScale(REWARD_EGG_SCALE).setDepth(REWARD_EGG_DEPTH);
   }
 
   private spawnPointFor(index: number): Phaser.Math.Vector2 {
@@ -440,12 +533,21 @@ export class NurseryScene extends Phaser.Scene {
       new Phaser.Math.Vector2(825, 445),
       new Phaser.Math.Vector2(355, 275),
     ];
-    return points[index % points.length].clone().add(new Phaser.Math.Vector2((index % 3) * 8, Math.floor(index / 5) * 8));
+    const cycle = Math.floor(index / points.length);
+    const angle = Phaser.Math.DegToRad((cycle * 137.5 + (index % points.length) * 47) % 360);
+    const radius = 10 + (cycle % 5) * 10;
+    const point = points[index % points.length].clone().add(new Phaser.Math.Vector2(
+      Math.cos(angle) * radius,
+      Math.sin(angle) * radius,
+    ));
+    point.x = Phaser.Math.Clamp(point.x, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS);
+    point.y = Phaser.Math.Clamp(point.y, FIELD.top + DINO_RADIUS, FIELD.bottom - DINO_RADIUS);
+    return point;
   }
 
   private spawnDino(index: number, position: { x: number; y: number }, animate: boolean): DinoEntity {
     const sprite = this.add.image(position.x, position.y + (animate ? 14 : 0), 'dino')
-      .setScale(animate ? 0.03 : DINO_SCALE)
+      .setScale(animate ? DINO_SCALE * 0.27 : DINO_SCALE)
       .setAlpha(animate ? 0 : 1)
       .setTint(DINO_TINTS[index % DINO_TINTS.length]);
     const { bubble, icon } = this.createNeedBubble();
@@ -455,6 +557,7 @@ export class NurseryScene extends Phaser.Scene {
     this.input.setDraggable(sprite);
     sprite.on('dragstart', () => {
       if (dino.reacting) return;
+      dino.pausedForTest = false;
       dino.dragging = true;
       this.tweens.killTweensOf(sprite);
       dino.roamTimer?.remove(false);
@@ -483,10 +586,10 @@ export class NurseryScene extends Phaser.Scene {
 
   private createNeedBubble(): { bubble: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Graphics } {
     const shape = this.add.graphics();
-    shape.fillStyle(0x456755, 0.22).fillEllipse(4, 7, 112, 78);
-    shape.fillStyle(0xffffff, 0.98).fillEllipse(0, 0, 112, 78);
-    shape.lineStyle(4, 0x4e6f5b, 0.92).strokeEllipse(0, 0, 112, 78);
-    shape.fillStyle(0xffffff, 0.98).fillTriangle(-14, 30, 8, 30, -4, 52);
+    shape.fillStyle(0xf4f6f8, 1).fillRect(-56, -39, 112, 78);
+    shape.lineStyle(4, 0x182027, 1).strokeRect(-56, -39, 112, 78);
+    shape.fillStyle(0xf4f6f8, 1).fillTriangle(-14, 39, 8, 39, -4, 54);
+    shape.lineStyle(3, 0x182027, 1).lineBetween(-14, 39, -4, 54).lineBetween(-4, 54, 8, 39);
     const icon = this.add.graphics();
     const bubble = this.add.container(0, 0, [shape, icon]).setDepth(NEED_BUBBLE_DEPTH).setVisible(false);
     return { bubble, icon };
@@ -651,7 +754,7 @@ export class NurseryScene extends Phaser.Scene {
     dino.reacting = true;
     this.tweens.killTweensOf(dino.sprite);
     dino.roamTimer?.remove(false);
-    dino.sprite.setPosition(POND.x, POND.y - 28).setDepth(505).setScale(0.096).setAlpha(1);
+    dino.sprite.setPosition(POND.x, POND.y - 28).setDepth(505).setScale(DINO_BATH_SCALE).setAlpha(1);
     this.sounds.splash();
     this.makeSplash();
     if (this.model.fulfillNeed(dino.index, 'bath')) this.completeNeed(dino);
@@ -676,7 +779,7 @@ export class NurseryScene extends Phaser.Scene {
     if (this.model.fulfillNeed(dino.index, 'play')) this.completeNeed(dino);
     this.tweens.add({ targets: dino.sprite, y: dino.sprite.y - 7, angle: 6, duration: 210, yoyo: true });
     this.tweens.add({
-      targets: this.ball, x: BALL_HOME.x, y: BALL_HOME.y, scale: 0.071, angle: '+=420', alpha: 1,
+      targets: this.ball, x: BALL_HOME.x, y: BALL_HOME.y, scale: BALL_TRAY_SCALE, angle: '+=420', alpha: 1,
       duration: 380, ease: 'Back.In',
       onComplete: () => {
         this.ball.setPosition(BALL_HOME.x, BALL_HOME.y).setDepth(704).setAlpha(1);
@@ -705,16 +808,17 @@ export class NurseryScene extends Phaser.Scene {
       && this.ball.y >= FIELD.top && this.ball.y <= FIELD.bottom;
     if (!inside) return this.returnBallToTray();
     this.ballPlaced = true;
-    this.ball.setScale(0.075).setAlpha(1);
+    this.ball.setScale(BALL_FIELD_SCALE).setAlpha(1);
     this.resolveWorldCollisions();
   }
 
   private returnBallToTray(): void {
     this.ballPlaced = false;
-    this.ball.setPosition(BALL_HOME.x, BALL_HOME.y).setScale(0.071).setDepth(704).setAlpha(1);
+    this.ball.setPosition(BALL_HOME.x, BALL_HOME.y).setScale(BALL_TRAY_SCALE).setDepth(704).setAlpha(1);
   }
 
   private scheduleRoam(dino: DinoEntity, delay: number): void {
+    if (dino.pausedForTest) return;
     dino.roamTimer?.remove(false);
     dino.roamTimer = this.time.delayedCall(delay, () => this.roam(dino));
   }
@@ -756,8 +860,9 @@ export class NurseryScene extends Phaser.Scene {
     this.heartLabel.setText(`${this.model.hearts}  /  ${this.model.heartTarget}`);
     if (animate) this.tweens.add({ targets: this.heartLabel, scale: 1.3, duration: 150, yoyo: true, ease: 'Back.Out' });
     if (this.model.newEggUnlocked && !this.rewardEgg.visible && !this.model.rewardEggHatching) {
-      this.rewardEgg.setVisible(true).setAlpha(0).setScale(0);
-      this.tweens.add({ targets: this.rewardEgg, scale: 0.09, alpha: 1, duration: 700, ease: 'Back.Out' });
+      this.armRewardEgg();
+      this.rewardEgg.setVisible(true).setAlpha(0).setScale(0).setDepth(REWARD_EGG_DEPTH);
+      this.tweens.add({ targets: this.rewardEgg, scale: REWARD_EGG_SCALE, alpha: 1, duration: 700, ease: 'Back.Out' });
       this.showSparkles(this.rewardEgg.x, this.rewardEgg.y, 0xffdc6e);
     }
   }

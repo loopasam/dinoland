@@ -43,6 +43,8 @@ declare global {
       };
       forceNeed: (dinoIndex: number, need: DinoNeed) => DinoNeed | null;
       pauseDino: (dinoIndex: number) => void;
+      fulfillActiveNeed: (dinoIndex: number) => boolean;
+      placeDino: (dinoIndex: number, x: number, y: number) => boolean;
     };
   }
 }

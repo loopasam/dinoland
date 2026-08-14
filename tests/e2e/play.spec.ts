@@ -58,9 +58,7 @@ test('hatches, places a persistent ball, and fulfills needs by collision', async
   expect(Math.abs(state.firstBubbleX - state.dinoX)).toBeLessThanOrEqual(1);
   expect(state.firstBubbleY).toBeLessThan(state.dinoY);
 
-  await page.evaluate(() => window.__DINOLAND__?.pauseDino(0));
-  state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: state.dinoX, y: state.dinoY }, { x: 1015, y: 485 });
+  expect(await page.evaluate(() => window.__DINOLAND__?.fulfillActiveNeed(0))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().need), { timeout: 7000 }).toBe('play');
 
@@ -84,7 +82,7 @@ test('hatches, places a persistent ball, and fulfills needs by collision', async
   expect(state.dinoY).toBeGreaterThanOrEqual(191);
 });
 
-test('reveals, drags, and hatches the four-heart egg', async ({ page }) => {
+test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({ page }) => {
   test.setTimeout(60_000);
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({ hatched: true, hearts: 4, secondEggHatched: false })));
   await page.reload();
@@ -146,6 +144,41 @@ test('reveals, drags, and hatches the four-heart egg', async ({ page }) => {
     secondBubbleVisible: true,
     secondBubbleAlpha: 1,
   });
+
+  for (const dinoIndex of [1, 0, 1]) {
+    const completed = await page.evaluate((index) => {
+      const game = window.__DINOLAND__;
+      if (!game) return false;
+      if (!game.getState().needs[index]) game.forceNeed(index, index % 2 === 0 ? 'bath' : 'play');
+      return game.fulfillActiveNeed(index);
+    }, dinoIndex);
+    expect(completed).toBe(true);
+  }
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    hearts: 4,
+    heartTarget: 4,
+    dinoCount: 2,
+    secondEggVisible: true,
+    secondEggBusy: false,
+  });
+  await page.waitForTimeout(800);
+
+  for (let index = 0; index < 4; index += 1) {
+    state = await page.evaluate(() => window.__DINOLAND__!.getState());
+    const egg = point(state.secondEggX, state.secondEggY);
+    await page.mouse.click(egg.x, egg.y);
+    await page.waitForTimeout(index === 3 ? 1500 : 650);
+    if (index < 3) {
+      await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().secondEggTaps)).toBe(index + 1);
+    }
+  }
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    hearts: 0,
+    heartTarget: 4,
+    dinoCount: 3,
+    secondEggVisible: false,
+  });
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().needs[2])).not.toBeNull();
 });
 
 test('keeps dinosaur needs and physical collisions independent', async ({ page }) => {
@@ -185,19 +218,21 @@ test('keeps dinosaur needs and physical collisions independent', async ({ page }
   expect(state.need).toBe('play');
   expect(state.secondNeed).toBe('bath');
 
-  await page.evaluate(() => window.__DINOLAND__?.pauseDino(0));
-  state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: state.dinoX, y: state.dinoY }, { x: 1015, y: 485 });
+  await page.waitForTimeout(700);
+  expect(await page.evaluate(() => window.__DINOLAND__?.placeDino(1, 970, 410))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(1);
+
+  expect(await page.evaluate(() => window.__DINOLAND__?.placeDino(0, 970, 410))).toBe(true);
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
   expect(state.firstPondDistance).toBeGreaterThanOrEqual(132);
   expect(state.need).toBe('play');
 
-  await page.evaluate(() => {
-    window.__DINOLAND__?.pauseDino(0);
-    window.__DINOLAND__?.pauseDino(1);
-  });
+  await page.waitForTimeout(1200);
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: state.secondDinoX, y: state.secondDinoY }, { x: state.dinoX, y: state.dinoY });
+  expect(await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(1, x, y), {
+    x: state.dinoX,
+    y: state.dinoY,
+  })).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().dinoDistance)).toBeGreaterThanOrEqual(109);
 });
 
