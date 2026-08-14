@@ -1,6 +1,6 @@
 # Dinoland
 
-A gentle browser toy where a young child hatches and plays with a baby triceratops. The first prototype is designed for a short, no-reading playtest.
+A gentle browser toy where a young child places, hatches, and cares for a growing herd of slowly roaming baby triceratops in a bounded, single-screen field. Every dinosaur has its own repeating bath and play needs, while each four-heart round unlocks another draggable egg.
 
 ## Play
 

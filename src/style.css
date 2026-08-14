@@ -1,6 +1,6 @@
 :root {
   color: #3d4d46;
-  background: #f7dca8;
+  background: #9ccc53;
   font-family: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
   font-synthesis: none;
 }
@@ -21,7 +21,7 @@ body,
 
 body {
   background:
-    radial-gradient(circle at 50% 30%, #fff7dd 0, #f7dca8 55%, #dfb879 100%);
+    radial-gradient(circle at 50% 30%, #dff3a7 0, #9ccc53 60%, #5f8b3d 100%);
 }
 
 canvas {
@@ -39,7 +39,7 @@ canvas {
   place-items: center;
   padding: 2rem;
   color: #355347;
-  background: #fff0c7;
+  background: #eaf3bd;
   text-align: center;
   font-size: 1.4rem;
   font-weight: 800;

@@ -2,7 +2,7 @@
 
 ## Direction
 
-Dinoland uses a warm, hand-painted 2D storybook style. Shapes are rounded, silhouettes are readable at tablet size, and nothing is sharp, threatening, or visually noisy.
+Dinoland uses a warm, hand-painted 2D storybook style with a fixed three-quarter top-down field view. Shapes are rounded, silhouettes are readable at tablet size, and nothing is sharp, threatening, or visually noisy.
 
 ## Palette
 
