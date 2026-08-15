@@ -29,6 +29,8 @@ declare global {
         secondDinoBouncing: boolean;
         bouncingDinoCount: number;
         firstBounceSpeed: number;
+        cannonDinoCollisions: number;
+        firstCannonDistance: number;
         dinoCount: number;
         newEggUnlocked: boolean;
         secondEggVisible: boolean;
@@ -74,6 +76,7 @@ declare global {
       pauseDino: (dinoIndex: number) => void;
       fulfillActiveNeed: (dinoIndex: number) => boolean;
       placeDino: (dinoIndex: number, x: number, y: number) => boolean;
+      launchDino: (dinoIndex: number, vx: number, vy: number) => boolean;
     };
   }
 }

@@ -34,6 +34,7 @@ const CANNON_CHARGE_MS = 1700;
 const PHYSICS_RESTITUTION = 0.9;
 const PHYSICS_FRICTION = 0.4;
 const PHYSICS_STOP_SPEED = 34;
+const COLLISION_SKIN = 4;
 const DINO_TINTS = [0x63c7d3, 0xf2a65a, 0x9bcf6b, 0xc89fe7, 0xe77f8f];
 
 type InventoryItemKind = 'ball' | 'drink' | 'food-a' | 'food-b' | 'speaker';
@@ -130,6 +131,7 @@ export class NurseryScene extends Phaser.Scene {
   private lastDinoImpactSpeed = 0;
   private guideEnd = { x: CANNON.x, y: CANNON.y };
   private movingFieldObjects = new Map<Phaser.GameObjects.Image, FieldMotion>();
+  private cannonDinoCollisions = 0;
 
   constructor() {
     super('NurseryScene');
@@ -211,6 +213,16 @@ export class NurseryScene extends Phaser.Scene {
         this.resolveWorldCollisions();
         return true;
       },
+      launchDino: (dinoIndex, vx, vy) => {
+        const dino = this.dinos[dinoIndex];
+        if (!dino) return false;
+        dino.pausedForTest = true;
+        this.prepareDinoForBounce(dino);
+        dino.bounceVx = vx;
+        dino.bounceVy = vy;
+        dino.bounceAge = 0;
+        return true;
+      },
     };
   }
 
@@ -264,6 +276,10 @@ export class NurseryScene extends Phaser.Scene {
       secondDinoBouncing: second?.bouncing ?? false,
       bouncingDinoCount: this.dinos.filter((dino) => dino.bouncing).length,
       firstBounceSpeed: first ? Math.round(Math.hypot(first.bounceVx, first.bounceVy)) : 0,
+      cannonDinoCollisions: this.cannonDinoCollisions,
+      firstCannonDistance: first
+        ? Math.round(Phaser.Math.Distance.Between(first.sprite.x, first.sprite.y, CANNON.x, CANNON.y))
+        : 0,
       dinoCount: this.model.dinoCount,
       newEggUnlocked: this.model.newEggUnlocked,
       secondEggVisible: this.rewardEgg.visible,
@@ -896,7 +912,9 @@ export class NurseryScene extends Phaser.Scene {
         this.sounds.bounce();
       }
 
-      this.bounceDinoOffCircle(dino, CANNON.x, CANNON.y, CANNON_RADIUS);
+      if (this.bounceDinoOffCircle(dino, CANNON.x, CANNON.y, CANNON_RADIUS)) {
+        this.cannonDinoCollisions += 1;
+      }
       for (const { egg, radius } of this.visibleEggObstacles()) {
         const incomingAngle = Math.atan2(dino.bounceVy, dino.bounceVx);
         if (this.bounceDinoOffCircle(dino, egg.x, egg.y, radius)) {
@@ -950,7 +968,8 @@ export class NurseryScene extends Phaser.Scene {
     if (distance >= minimum) return false;
     const nx = distance > 0.1 ? dx / distance : Math.cos(dino.index * 2.17);
     const ny = distance > 0.1 ? dy / distance : Math.sin(dino.index * 2.17);
-    dino.sprite.setPosition(obstacleX + nx * minimum, obstacleY + ny * minimum);
+    const separation = minimum + COLLISION_SKIN;
+    dino.sprite.setPosition(obstacleX + nx * separation, obstacleY + ny * separation);
     const normalVelocity = dino.bounceVx * nx + dino.bounceVy * ny;
     if (normalVelocity < 0) {
       dino.bounceVx -= (1 + PHYSICS_RESTITUTION) * normalVelocity * nx;
@@ -1505,9 +1524,10 @@ export class NurseryScene extends Phaser.Scene {
   private resolveCannonCollision(dino: DinoEntity): boolean {
     const minimum = DINO_RADIUS + CANNON_RADIUS;
     if (Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, CANNON.x, CANNON.y) >= minimum) return false;
-    this.pushAway(dino.sprite, CANNON.x, CANNON.y, minimum);
+    this.pushAway(dino.sprite, CANNON.x, CANNON.y, minimum + COLLISION_SKIN);
     this.tweens.killTweensOf(dino.sprite);
     this.scheduleRoam(dino, 700);
+    this.cannonDinoCollisions += 1;
     return true;
   }
 
@@ -1812,34 +1832,7 @@ export class NurseryScene extends Phaser.Scene {
 
   private roam(dino: DinoEntity): void {
     if (dino.reacting || dino.bouncing) return this.scheduleRoam(dino, 800);
-    const rawX = dino.sprite.x + Phaser.Math.Between(-380, 380);
-    const rawY = dino.sprite.y + Phaser.Math.Between(-210, 210);
-    let targetX = Phaser.Math.Clamp(rawX, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS);
-    let targetY = Phaser.Math.Clamp(rawY, FIELD.top + DINO_RADIUS, FIELD.bottom - DINO_RADIUS);
-    for (const { egg, radius } of this.visibleEggObstacles()) {
-      const minimum = DINO_RADIUS + radius;
-      if (Phaser.Math.Distance.Between(targetX, targetY, egg.x, egg.y) < minimum) {
-        const angle = Phaser.Math.Angle.Between(egg.x, egg.y, targetX, targetY);
-        targetX = egg.x + Math.cos(angle) * minimum;
-        targetY = egg.y + Math.sin(angle) * minimum;
-      }
-    }
-    const cannonMinimum = DINO_RADIUS + CANNON_RADIUS;
-    if (Phaser.Math.Distance.Between(targetX, targetY, CANNON.x, CANNON.y) < cannonMinimum) {
-      const angle = Phaser.Math.Angle.Between(CANNON.x, CANNON.y, targetX, targetY);
-      targetX = CANNON.x + Math.cos(angle) * cannonMinimum;
-      targetY = CANNON.y + Math.sin(angle) * cannonMinimum;
-    }
-    for (const other of this.dinos) {
-      if (other === dino) continue;
-      if (Phaser.Math.Distance.Between(targetX, targetY, other.sprite.x, other.sprite.y) < DINO_RADIUS * 2) {
-        const angle = Phaser.Math.Angle.Between(other.sprite.x, other.sprite.y, targetX, targetY);
-        targetX = other.sprite.x + Math.cos(angle) * DINO_RADIUS * 2;
-        targetY = other.sprite.y + Math.sin(angle) * DINO_RADIUS * 2;
-      }
-    }
-    targetX = Phaser.Math.Clamp(targetX, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS);
-    targetY = Phaser.Math.Clamp(targetY, FIELD.top + DINO_RADIUS, FIELD.bottom - DINO_RADIUS);
+    const { x: targetX, y: targetY } = this.chooseRoamTarget(dino);
     dino.sprite.setFlipX(targetX < dino.sprite.x);
     const distance = Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, targetX, targetY);
     this.tweens.add({
@@ -1849,6 +1842,79 @@ export class NurseryScene extends Phaser.Scene {
         this.scheduleRoam(dino, Phaser.Math.Between(1500, 3000));
       },
     });
+  }
+
+  private chooseRoamTarget(dino: DinoEntity): Phaser.Math.Vector2 {
+    const minX = FIELD.left + DINO_RADIUS;
+    const maxX = FIELD.right - DINO_RADIUS;
+    const minY = FIELD.top + DINO_RADIUS;
+    const maxY = FIELD.bottom - DINO_RADIUS;
+    const cannonClearance = DINO_RADIUS + CANNON_RADIUS + COLLISION_SKIN;
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      let targetX = Phaser.Math.Clamp(dino.sprite.x + Phaser.Math.Between(-380, 380), minX, maxX);
+      let targetY = Phaser.Math.Clamp(dino.sprite.y + Phaser.Math.Between(-210, 210), minY, maxY);
+
+      for (const { egg, radius } of this.visibleEggObstacles()) {
+        const minimum = DINO_RADIUS + radius;
+        if (Phaser.Math.Distance.Between(targetX, targetY, egg.x, egg.y) < minimum) {
+          const angle = Phaser.Math.Angle.Between(egg.x, egg.y, targetX, targetY);
+          targetX = egg.x + Math.cos(angle) * minimum;
+          targetY = egg.y + Math.sin(angle) * minimum;
+        }
+      }
+      for (const other of this.dinos) {
+        if (other === dino) continue;
+        if (Phaser.Math.Distance.Between(targetX, targetY, other.sprite.x, other.sprite.y) < DINO_RADIUS * 2) {
+          const angle = Phaser.Math.Angle.Between(other.sprite.x, other.sprite.y, targetX, targetY);
+          targetX = other.sprite.x + Math.cos(angle) * DINO_RADIUS * 2;
+          targetY = other.sprite.y + Math.sin(angle) * DINO_RADIUS * 2;
+        }
+      }
+
+      targetX = Phaser.Math.Clamp(targetX, minX, maxX);
+      targetY = Phaser.Math.Clamp(targetY, minY, maxY);
+      if (!this.segmentIntersectsCircle(
+        dino.sprite.x,
+        dino.sprite.y,
+        targetX,
+        targetY,
+        CANNON.x,
+        CANNON.y,
+        cannonClearance,
+      )) return new Phaser.Math.Vector2(targetX, targetY);
+    }
+
+    const awayAngle = Phaser.Math.Angle.Between(CANNON.x, CANNON.y, dino.sprite.x, dino.sprite.y);
+    return new Phaser.Math.Vector2(
+      Phaser.Math.Clamp(dino.sprite.x + Math.cos(awayAngle) * 160, minX, maxX),
+      Phaser.Math.Clamp(dino.sprite.y + Math.sin(awayAngle) * 160, minY, maxY),
+    );
+  }
+
+  private segmentIntersectsCircle(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    circleX: number,
+    circleY: number,
+    radius: number,
+  ): boolean {
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared < 0.001) {
+      return Phaser.Math.Distance.Between(startX, startY, circleX, circleY) < radius;
+    }
+    const projection = Phaser.Math.Clamp(
+      ((circleX - startX) * dx + (circleY - startY) * dy) / lengthSquared,
+      0,
+      1,
+    );
+    const closestX = startX + dx * projection;
+    const closestY = startY + dy * projection;
+    return Phaser.Math.Distance.Between(closestX, closestY, circleX, circleY) < radius;
   }
 
   private updateProgress(animate: boolean): void {

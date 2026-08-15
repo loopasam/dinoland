@@ -457,8 +457,16 @@ test('uses cannon charge for distance and knocks dinosaurs and landed items arou
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().dinoCount)).toBe(1);
   await page.evaluate(() => {
     window.__DINOLAND__?.pauseDino(0);
-    window.__DINOLAND__?.placeDino(0, 1100, 300);
+    window.__DINOLAND__?.placeDino(0, 420, 348);
+    window.__DINOLAND__?.launchDino(0, 420, 0);
   });
+
+  await expect.poll(
+    () => page.evaluate(() => window.__DINOLAND__?.getState().cannonDinoCollisions),
+  ).toBeGreaterThan(0);
+  await waitForPhysicsToSettle(page);
+  expect(await page.evaluate(() => window.__DINOLAND__!.getState().firstCannonDistance)).toBeGreaterThan(128);
+  await page.evaluate(() => window.__DINOLAND__?.placeDino(0, 1100, 300));
 
   const canvas = page.locator('canvas');
   const box = await canvas.boundingBox();
