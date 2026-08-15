@@ -30,6 +30,18 @@ declare global {
         ballPlaced: boolean;
         ballX: number;
         ballY: number;
+        drinkPlaced: boolean;
+        drinkX: number;
+        drinkY: number;
+        foodAPlaced: boolean;
+        foodAX: number;
+        foodAY: number;
+        foodBPlaced: boolean;
+        foodBX: number;
+        foodBY: number;
+        speakerPlaced: boolean;
+        speakerX: number;
+        speakerY: number;
         eggX: number;
         eggY: number;
         secondEggX: number;
@@ -39,7 +51,7 @@ declare global {
         secondDinoX: number;
         secondDinoY: number;
         dinoDistance: number;
-        firstPondDistance: number;
+        firstRewardEggDistance: number;
       };
       forceNeed: (dinoIndex: number, need: DinoNeed) => DinoNeed | null;
       pauseDino: (dinoIndex: number) => void;

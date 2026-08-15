@@ -1,5 +1,5 @@
 export type PlayMode = 'egg' | 'hatching' | 'field';
-export type DinoNeed = 'bath' | 'play';
+export type DinoNeed = 'thirst' | 'play' | 'hunger' | 'affection' | 'music';
 
 export interface SavedProgress {
   hatched: boolean;
@@ -14,6 +14,16 @@ interface LegacyProgress extends Partial<SavedProgress> {
 
 export const SAVE_KEY = 'dinoland-progress-v2';
 export const INITIAL_HEART_TARGET = 4;
+export const NEED_CYCLE: readonly DinoNeed[] = ['thirst', 'play', 'hunger', 'affection', 'music'];
+
+function firstNeedFor(dinoIndex: number): DinoNeed {
+  return NEED_CYCLE[dinoIndex % NEED_CYCLE.length];
+}
+
+function nextNeedAfter(need: DinoNeed): DinoNeed {
+  const index = NEED_CYCLE.indexOf(need);
+  return NEED_CYCLE[(index + 1) % NEED_CYCLE.length];
+}
 
 export class GameModel {
   private _eggTaps: number;
@@ -34,7 +44,7 @@ export class GameModel {
     this._hearts = Math.max(0, Math.floor(progress.hearts ?? 0));
     this._heartTarget = INITIAL_HEART_TARGET;
     this.needs = Array.from({ length: this._dinoCount }, () => null);
-    this.nextNeeds = Array.from({ length: this._dinoCount }, (_, index) => index % 2 === 0 ? 'bath' : 'play');
+    this.nextNeeds = Array.from({ length: this._dinoCount }, (_, index) => firstNeedFor(index));
   }
 
   get eggTaps(): number { return this._eggTaps; }
@@ -58,7 +68,7 @@ export class GameModel {
     this._mode = 'field';
     this._dinoCount = 1;
     this.needs = [null];
-    this.nextNeeds = ['bath'];
+    this.nextNeeds = ['thirst'];
   }
 
   tapRewardEgg(): number {
@@ -76,7 +86,7 @@ export class GameModel {
     this._hearts = 0;
     this._heartTarget = INITIAL_HEART_TARGET;
     this.needs.push(null);
-    this.nextNeeds.push(this._dinoCount % 2 === 0 ? 'play' : 'bath');
+    this.nextNeeds.push(firstNeedFor(this._dinoCount - 1));
     return this._dinoCount;
   }
 
@@ -87,9 +97,9 @@ export class GameModel {
   requestNeed(dinoIndex: number, forced?: DinoNeed): DinoNeed | null {
     if (this._mode !== 'field' || dinoIndex < 0 || dinoIndex >= this._dinoCount) return null;
     if (this.needs[dinoIndex]) return this.needs[dinoIndex];
-    const need = forced ?? this.nextNeeds[dinoIndex] ?? 'bath';
+    const need = forced ?? this.nextNeeds[dinoIndex] ?? 'thirst';
     this.needs[dinoIndex] = need;
-    this.nextNeeds[dinoIndex] = need === 'bath' ? 'play' : 'bath';
+    this.nextNeeds[dinoIndex] = nextNeedAfter(need);
     return need;
   }
 

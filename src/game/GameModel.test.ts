@@ -15,13 +15,22 @@ describe('GameModel', () => {
   it('keeps needs independent for every dinosaur', () => {
     const model = new GameModel({ hatched: true, dinoCount: 2, heartTarget: 4 });
     expect(model.requestNeed(0, 'play')).toBe('play');
-    expect(model.requestNeed(1, 'bath')).toBe('bath');
+    expect(model.requestNeed(1, 'thirst')).toBe('thirst');
     expect(model.fulfillNeed(1, 'play')).toBe(false);
     expect(model.needFor(0)).toBe('play');
-    expect(model.needFor(1)).toBe('bath');
+    expect(model.needFor(1)).toBe('thirst');
     expect(model.fulfillNeed(0, 'play')).toBe(true);
     expect(model.needFor(0)).toBeNull();
-    expect(model.needFor(1)).toBe('bath');
+    expect(model.needFor(1)).toBe('thirst');
+  });
+
+  it('cycles each dinosaur through every care interaction', () => {
+    const model = new GameModel({ hatched: true, dinoCount: 1 });
+    const cycle = ['thirst', 'play', 'hunger', 'affection', 'music', 'thirst'] as const;
+    for (const expected of cycle) {
+      expect(model.requestNeed(0)).toBe(expected);
+      expect(model.fulfillNeed(0, expected)).toBe(true);
+    }
   });
 
   it('resets every reward round to zero out of four', () => {
@@ -46,7 +55,7 @@ describe('GameModel', () => {
     for (let expectedDinoCount = 2; expectedDinoCount <= 50; expectedDinoCount += 1) {
       for (let heart = 0; heart < 4; heart += 1) {
         const dinoIndex = heart % model.dinoCount;
-        expect(model.requestNeed(dinoIndex, heart % 2 === 0 ? 'bath' : 'play')).not.toBeNull();
+        expect(model.requestNeed(dinoIndex, heart % 2 === 0 ? 'thirst' : 'play')).not.toBeNull();
         expect(model.fulfillNeed(dinoIndex, model.needFor(dinoIndex)!)).toBe(true);
       }
       expect(model.newEggUnlocked).toBe(true);
@@ -75,7 +84,7 @@ describe('GameModel', () => {
   it('fully resets progression and every need', () => {
     const model = new GameModel({ hatched: true, hearts: 4, heartTarget: 4, dinoCount: 2 });
     model.requestNeed(0, 'play');
-    model.requestNeed(1, 'bath');
+    model.requestNeed(1, 'thirst');
     model.reset();
     expect(model.serialize()).toEqual({ hatched: false, hearts: 0, heartTarget: 4, dinoCount: 0 });
     expect(model.needFor(0)).toBeNull();

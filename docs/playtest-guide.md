@@ -5,7 +5,10 @@ Open the game with cleared local storage. This build intentionally uses placehol
 Observe:
 
 - Does the small egg attract taps without prompting?
-- Does the child understand the bath bubble and drag the dinosaur to the pond?
+- Does the child understand the thirst bubble and bring the blue drink container to the dinosaur?
+- Does the child understand that either food can be given to a hungry dinosaur?
+- Does the child try tapping the dinosaur when the heart bubble appears?
+- Does the child understand that the speaker can stay on the field and affect nearby musical dinosaurs?
 - Does that first bubble appear quickly enough after hatching to keep the child engaged?
 - Does the dinosaur visibly stop at the pool edge instead of walking through it?
 - Does the child notice the item tray when the play bubble appears?
@@ -13,7 +16,9 @@ Observe:
 - Does receiving a heart feel meaningful?
 - Does the new egg attract attention when it appears at four hearts?
 - Does the child understand that the ball can be repositioned until play, then returns to inventory?
+- Does the child understand that food is consumed while the speaker remains available?
 - Does the child drag either egg before trying to hatch it?
+- Does the child notice that dinosaurs cannot overlap a visible unopened egg?
 - Can the child open the four-heart egg and notice the second dinosaur?
 - Does the slower roaming feel alive without becoming distracting?
 - Does the dinosaur visibly feel contained when it bumps against the field boundary?

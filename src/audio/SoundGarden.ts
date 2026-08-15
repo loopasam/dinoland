@@ -56,9 +56,28 @@ export class SoundGarden {
     this.tone(560 + variant * 90, 0.07, 'sine', 0.035, 860 + variant * 70);
   }
 
-  splash(): void {
-    this.noise(0.22, 0.05, 2200);
-    this.tone(190, 0.12, 'sine', 0.025, 290);
+  drink(): void {
+    [340, 410, 480].forEach((frequency, index) => {
+      window.setTimeout(() => this.tone(frequency, 0.08, 'sine', 0.035, frequency * 0.86), index * 70);
+    });
+  }
+
+  eat(): void {
+    [210, 175, 225].forEach((frequency, index) => {
+      window.setTimeout(() => this.tone(frequency, 0.07, 'triangle', 0.04, frequency * 0.82), index * 85);
+    });
+  }
+
+  affection(): void {
+    [520, 660, 780].forEach((frequency, index) => {
+      window.setTimeout(() => this.tone(frequency, 0.1, 'sine', 0.04, frequency * 1.06), index * 75);
+    });
+  }
+
+  music(): void {
+    [262, 330, 392, 330].forEach((frequency, index) => {
+      window.setTimeout(() => this.tone(frequency, 0.14, 'triangle', 0.035), index * 110);
+    });
   }
 
   flower(): void {

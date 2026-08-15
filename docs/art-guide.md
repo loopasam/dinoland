@@ -4,7 +4,7 @@
 
 ## Direction
 
-The current implementation uses a flat debug field, a visible grid, colored dinosaur boxes, egg ellipses, a ball circle, and a circular bath. Each collider is outlined onscreen. These placeholders retain the intended fixed three-quarter top-down game layout without implying that the art direction is final.
+The current implementation uses a flat debug field, a visible grid, colored dinosaur boxes, egg ellipses, a ball circle, a blue drink container, two geometric foods, and a speaker with a visible proximity radius. Each physical collider is outlined onscreen. These placeholders retain the intended fixed three-quarter top-down game layout without implying that the art direction is final.
 
 ## Palette
 
