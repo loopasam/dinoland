@@ -1,4 +1,67 @@
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
+
+type GamePoint = { x: number; y: number };
+
+async function waitForPhysicsToSettle(page: Page): Promise<void> {
+  await expect.poll(async () => {
+    const state = await page.evaluate(() => window.__DINOLAND__?.getState());
+    return (state?.bouncingDinoCount ?? 0) + (state?.movingObjectCount ?? 0);
+  }, { timeout: 20_000 }).toBe(0);
+}
+
+async function launchFromCannon(
+  page: Page,
+  point: (x: number, y: number) => GamePoint,
+  drag: (from: GamePoint, to: GamePoint) => Promise<void>,
+  itemHome: GamePoint,
+  target: GamePoint,
+  kind: 'ball' | 'drink' | 'food-a' | 'food-b' | 'speaker',
+  requestedPower?: number,
+): Promise<number> {
+  const alreadyLoaded = await page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded);
+  if (alreadyLoaded !== kind) {
+    const inventoryItem = point(itemHome.x, itemHome.y);
+    await page.mouse.click(inventoryItem.x, inventoryItem.y);
+  }
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe(kind);
+
+  const state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  const barrelStart = {
+    x: 640 + Math.cos(state.cannonAngle) * 45,
+    y: 348 + Math.sin(state.cannonAngle) * 45,
+  };
+  await drag(barrelStart, target);
+
+  const angle = Math.atan2(target.y - 348, target.x - 640);
+  const muzzle = { x: 640 + Math.cos(angle) * 96, y: 348 + Math.sin(angle) * 96 };
+  const desiredDistance = Math.hypot(target.x - muzzle.x, target.y - muzzle.y);
+  let selectedPower = 0.12;
+  let smallestError = Infinity;
+  for (let step = 12; step <= 100; step += 1) {
+    const candidate = step / 100;
+    const distance = (140 + candidate * 760) * (0.5 + candidate * 0.4);
+    const error = Math.abs(distance - desiredDistance);
+    if (error < smallestError) {
+      smallestError = error;
+      selectedPower = candidate;
+    }
+  }
+  if (requestedPower !== undefined) selectedPower = Math.max(0.12, Math.min(1, requestedPower));
+
+  const fire = point(720, 650);
+  await page.mouse.move(fire.x, fire.y);
+  await page.mouse.down();
+  await page.waitForTimeout(Math.max(220, selectedPower * 1700));
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBeNull();
+  const firedPower = await page.evaluate(() => window.__DINOLAND__!.getState().lastCannonPower);
+  expect(firedPower).toBeGreaterThan(0.1);
+  await expect.poll(
+    () => page.evaluate(() => window.__DINOLAND__?.getState().cannonShotActive),
+    { timeout: 10_000 },
+  ).toBe(false);
+  return firedPower;
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/dinoland/');
@@ -7,8 +70,8 @@ test.beforeEach(async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('egg');
 });
 
-test('hatches, moves the egg, fulfills needs with items, and keeps the dinosaur tap-only', async ({ page }) => {
-  test.setTimeout(60_000);
+test('hatches, uses the cannon, locks landed items, fulfills needs, and keeps the dinosaur tap-only', async ({ page }) => {
+  test.setTimeout(120_000);
   const canvas = page.locator('canvas');
   const box = await canvas.boundingBox();
   if (!box) throw new Error('Game canvas not found');
@@ -60,14 +123,40 @@ test('hatches, moves the egg, fulfills needs with items, and keeps the dinosaur 
 
   await page.evaluate(() => window.__DINOLAND__?.pauseDino(0));
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 170, y: 650 }, { x: state.dinoX, y: state.dinoY });
+  await launchFromCannon(page, point, drag, { x: 170, y: 650 }, { x: state.dinoX, y: state.dinoY }, 'drink');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(0);
+  expect(state.need).toBe('thirst');
+  expect(state.lastShotHitDino).toBe(true);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.drinkPlaced).toBe(true);
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(0, x, y), { x: state.drinkX, y: state.drinkY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().drinkPlaced)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().need), { timeout: 7000 }).toBe('play');
 
+  await launchFromCannon(page, point, drag, { x: 86, y: 650 }, { x: 1000, y: 500 }, 'ball');
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(true);
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 86, y: 650 }, { x: state.dinoX, y: state.dinoY });
+  const lockedBall = { x: state.ballX, y: state.ballY };
+  await drag(lockedBall, { x: 780, y: 280 });
+  await page.waitForTimeout(600);
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect({ x: state.ballX, y: state.ballY }).toEqual(lockedBall);
+  expect(state.ballPlaced).toBe(true);
+  const recalledBall = point(state.ballX, state.ballY);
+  await page.mouse.click(recalledBall.x, recalledBall.y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
+
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await launchFromCannon(page, point, drag, { x: 86, y: 650 }, { x: state.dinoX, y: state.dinoY }, 'ball');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(1);
+  expect(state.lastShotHitDino).toBe(true);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(0, x, y), { x: state.ballX, y: state.ballY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(2);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dinoland-progress-v2') ?? '{}').hearts)).toBe(2);
@@ -101,6 +190,14 @@ test('reveals eggs with escalating targets and resumes care after each hatch', a
   const box = await canvas.boundingBox();
   if (!box) throw new Error('Game canvas not found');
   const point = (x: number, y: number) => ({ x: box.x + (x / 1280) * box.width, y: box.y + (y / 720) * box.height });
+  const drag = async (from: GamePoint, to: GamePoint) => {
+    const dragStart = point(from.x, from.y);
+    const dragEnd = point(to.x, to.y);
+    await page.mouse.move(dragStart.x, dragStart.y);
+    await page.mouse.down();
+    await page.mouse.move(dragEnd.x, dragEnd.y, { steps: 12 });
+    await page.mouse.up();
+  };
   const start = point(760, 285);
   const end = point(680, 360);
   await page.mouse.move(start.x, start.y);
@@ -135,12 +232,13 @@ test('reveals eggs with escalating targets and resumes care after each hatch', a
   expect(Math.abs(state.secondBubbleX - state.secondDinoX)).toBeLessThanOrEqual(1);
   expect(state.secondBubbleY).toBeLessThan(state.secondDinoY);
 
-  const ballStart = point(86, 650);
-  const secondDino = point(state.secondDinoX, state.secondDinoY);
-  await page.mouse.move(ballStart.x, ballStart.y);
-  await page.mouse.down();
-  await page.mouse.move(secondDino.x, secondDino.y, { steps: 12 });
-  await page.mouse.up();
+  await launchFromCannon(page, point, drag, { x: 86, y: 650 }, { x: state.secondDinoX, y: state.secondDinoY }, 'ball');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(0);
+  expect(state.lastShotHitDino).toBe(true);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(1, x, y), { x: state.ballX, y: state.ballY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     hearts: 1,
     secondNeed: null,
@@ -194,6 +292,7 @@ test('reveals eggs with escalating targets and resumes care after each hatch', a
 });
 
 test('keeps item ownership, dinosaurs, and draggable egg collisions independent', async ({ page }) => {
+  test.setTimeout(90_000);
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
     hatched: true,
     hearts: 0,
@@ -223,19 +322,30 @@ test('keeps item ownership, dinosaurs, and draggable egg collisions independent'
   let state = await page.evaluate(() => window.__DINOLAND__!.getState());
   await page.evaluate(() => window.__DINOLAND__?.pauseDino(1));
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 86, y: 650 }, { x: state.secondDinoX, y: state.secondDinoY });
-  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
+  await launchFromCannon(page, point, drag, { x: 86, y: 650 }, { x: state.secondDinoX, y: state.secondDinoY }, 'ball');
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
   expect(state.hearts).toBe(0);
   expect(state.need).toBe('play');
   expect(state.secondNeed).toBe('thirst');
-
-  await page.waitForTimeout(700);
+  expect(state.lastShotHitDino).toBe(true);
+  expect(state.ballPlaced).toBe(true);
+  await waitForPhysicsToSettle(page);
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 170, y: 650 }, { x: state.secondDinoX, y: state.secondDinoY });
+  await page.mouse.click(point(state.ballX, state.ballY).x, point(state.ballX, state.ballY).y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
+
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await launchFromCannon(page, point, drag, { x: 170, y: 650 }, { x: state.secondDinoX, y: state.secondDinoY }, 'drink');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(0);
+  expect(state.lastShotHitDino).toBe(true);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(1, x, y), { x: state.drinkX, y: state.drinkY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().drinkPlaced)).toBe(false);
 
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
   expect(state.need).toBe('play');
 
   for (const dinoIndex of [0, 1, 0, 1, 0]) {
@@ -293,14 +403,24 @@ test('supports either food, affection taps, and persistent music proximity', asy
   };
 
   let state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 254, y: 650 }, { x: state.dinoX, y: state.dinoY });
+  await launchFromCannon(page, point, drag, { x: 254, y: 650 }, { x: state.dinoX, y: state.dinoY }, 'food-a');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(0);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(0, x, y), { x: state.foodAX, y: state.foodAY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().foodAPlaced)).toBe(false);
 
   await page.waitForTimeout(700);
   expect(await page.evaluate(() => window.__DINOLAND__?.forceNeed(0, 'hunger'))).toBe('hunger');
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 338, y: 650 }, { x: state.dinoX, y: state.dinoY });
+  await launchFromCannon(page, point, drag, { x: 338, y: 650 }, { x: state.dinoX, y: state.dinoY }, 'food-b');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(1);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(0, x, y), { x: state.foodBX, y: state.foodBY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(2);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().foodBPlaced)).toBe(false);
 
@@ -313,10 +433,101 @@ test('supports either food, affection taps, and persistent music proximity', asy
 
   await page.waitForTimeout(800);
   expect(await page.evaluate(() => window.__DINOLAND__?.forceNeed(0, 'music'))).toBe('music');
+  await page.evaluate(() => window.__DINOLAND__?.placeDino(0, 180, 170));
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  await drag({ x: 422, y: 650 }, { x: state.dinoX + 100, y: state.dinoY });
+  await launchFromCannon(page, point, drag, { x: 422, y: 650 }, { x: 1050, y: 500 }, 'speaker');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(3);
+  await waitForPhysicsToSettle(page);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  await page.evaluate(({ x, y }) => window.__DINOLAND__?.placeDino(0, x, y), { x: state.speakerX + 80, y: state.speakerY });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(4);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().speakerPlaced)).toBe(true);
+});
+
+test('uses cannon charge for distance and knocks dinosaurs and landed items around', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
+    hatched: true,
+    hearts: 0,
+    heartTarget: 4,
+    dinoCount: 1,
+  })));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().dinoCount)).toBe(1);
+  await page.evaluate(() => {
+    window.__DINOLAND__?.pauseDino(0);
+    window.__DINOLAND__?.placeDino(0, 1100, 300);
+  });
+
+  const canvas = page.locator('canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Game canvas not found');
+  const point = (x: number, y: number) => ({ x: box.x + (x / 1280) * box.width, y: box.y + (y / 720) * box.height });
+  const drag = async (from: GamePoint, to: GamePoint) => {
+    const start = point(from.x, from.y);
+    const end = point(to.x, to.y);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x, end.y, { steps: 12 });
+    await page.mouse.up();
+  };
+
+  const inventoryBall = point(86, 650);
+  await page.mouse.click(inventoryBall.x, inventoryBall.y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('ball');
+  for (const target of [{ x: 1080, y: 120 }, { x: 1080, y: 575 }]) {
+    let guideState = await page.evaluate(() => window.__DINOLAND__!.getState());
+    await drag({
+      x: 640 + Math.cos(guideState.cannonAngle) * 45,
+      y: 348 + Math.sin(guideState.cannonAngle) * 45,
+    }, target);
+    guideState = await page.evaluate(() => window.__DINOLAND__!.getState());
+    const muzzle = {
+      x: 640 + Math.cos(guideState.cannonAngle) * 96,
+      y: 348 + Math.sin(guideState.cannonAngle) * 96,
+    };
+    const guideVector = {
+      x: guideState.cannonGuideEndX - muzzle.x,
+      y: guideState.cannonGuideEndY - muzzle.y,
+    };
+    const cross = Math.abs(guideVector.x * Math.sin(guideState.cannonAngle)
+      - guideVector.y * Math.cos(guideState.cannonAngle));
+    expect(cross).toBeLessThan(1.5);
+  }
+  const lowCharge = await launchFromCannon(page, point, drag, { x: 86, y: 650 }, { x: 180, y: 348 }, 'ball', 0.12);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(true);
+  let state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  const lowLaunchSpeed = state.lastCannonSpeed;
+  await page.mouse.click(point(state.ballX, state.ballY).x, point(state.ballX, state.ballY).y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
+
+  const highCharge = await launchFromCannon(page, point, drag, { x: 86, y: 650 }, { x: 180, y: 348 }, 'ball', 0.78);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(true);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  const highLaunchSpeed = state.lastCannonSpeed;
+  expect(highCharge).toBeGreaterThan(lowCharge + 0.5);
+  expect(highLaunchSpeed).toBeGreaterThan(lowLaunchSpeed + 350);
+  expect(state.lastShotWallBounces).toBeGreaterThan(0);
+  await page.mouse.click(point(state.ballX, state.ballY).x, point(state.ballX, state.ballY).y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
+
+  await launchFromCannon(page, point, drag, { x: 422, y: 650 }, { x: 900, y: 300 }, 'speaker');
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().speakerPlaced)).toBe(true);
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  const speakerBefore = { x: state.speakerX, y: state.speakerY };
+  await launchFromCannon(page, point, drag, { x: 86, y: 650 }, speakerBefore, 'ball');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(Math.hypot(state.speakerX - speakerBefore.x, state.speakerY - speakerBefore.y)).toBeGreaterThan(20);
+
+  await page.evaluate(() => window.__DINOLAND__?.placeDino(0, 800, 300));
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  const dinoBefore = { x: state.dinoX, y: state.dinoY };
+  await launchFromCannon(page, point, drag, { x: 254, y: 650 }, dinoBefore, 'food-a');
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  expect(state.hearts).toBe(0);
+  expect(state.lastShotHitDino).toBe(true);
+  expect(state.lastDinoImpactSpeed).toBeGreaterThan(100);
 });
 
 test('reset button immediately clears all progress', async ({ page }) => {

@@ -13,12 +13,12 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 1. Place the egg anywhere in the field and tap it four times to hatch a baby triceratops.
 2. Watch the smaller dinosaur roam slowly without leaving the field.
 3. A need bubble asks for thirst, play, hunger, affection, or music.
-4. Drag the drink container from the item tray onto the field. It remains draggable until a dinosaur reaches it.
-5. Bring a drink to a thirsty dinosaur, or wait for the roaming dinosaur to reach it, to fulfill thirst.
-6. Use the ball from the item tray in the same way to fulfill play.
+4. Tap an inventory item to load it directly into the cannon at the center of the field.
+5. Drag the cannon barrel to aim, then press and hold `FIRE` beside the inventory to build power. Releasing launches the item.
+6. Land a drink or ball where the dinosaur can discover it. A direct hit sends the dinosaur bouncing instead of completing its need.
 7. Give either of the two food types to any hungry dinosaur; both foods are valid and return to inventory after being eaten.
 8. Tap a dinosaur asking for affection. Dinosaurs roam on their own and cannot be dragged.
-9. Place the speaker on the field. It remains draggable and satisfies musical dinosaurs inside its proximity ring.
+9. Launch the speaker from the cannon. It locks where it lands and satisfies musical dinosaurs inside its proximity ring.
 10. Receive one heart for the correct action.
 11. Fill the current heart target to reveal a new draggable egg on the field. Targets grow with the herd: 4, 6, 9, 13, 18, and so on.
 12. Tap the new egg four times to hatch another independently managed triceratops.
@@ -33,7 +33,15 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 - Random roaming pauses during care reactions, then resumes automatically.
 - Every dinosaur owns an independent need and comic bubble.
 - A need bubble is a non-physical visual attached at a fixed offset above its dinosaur. It can cross the field boundary and overlap other bubbles without affecting collisions.
-- Every movable field object, including both eggs, remains draggable inside the play bounds.
+- Eggs remain draggable inside the play bounds. A tap on an inventory slot loads that item into the cannon; inventory dragging is not used.
+- The cannon sits at the field center and can be aimed in any direction. Its dotted guide is a straight ray from the barrel to the first fence intersection; approaching an edge never changes the aiming angle.
+- Holding the fire control fills the power meter; a short press lands nearby and a long press travels toward the far fence.
+- The fire control and power meter sit on the bottom-right, level with the inventory tray.
+- Shot items, dinosaurs, landed inventory items, and visible eggs share the same billiards-style velocity, friction, and rebound rules. Collisions transfer momentum instead of teleporting an object to a new position.
+- Moving objects travel in straight lines between collisions and rebound smoothly from the fence, the cannon, and one another until friction brings them to rest.
+- A struck dinosaur stays in this momentum state until it settles. Need fulfillment is disabled throughout that motion.
+- The cannon is itself a solid field obstacle that roaming dinosaurs cannot cross.
+- A landed inventory item is locked and cannot be dragged. A clean tap recalls it to its inventory slot so a missed throw never blocks progress.
 - The ball, drink, and both foods return to inventory after contact so they can be placed again.
 - Both foods fulfill the same hunger need for every dinosaur; food preference is not restricted by dinosaur type in this prototype.
 - Affection responds to a tap on the dinosaur while all object-placement gestures leave dinosaurs stationary.
@@ -59,14 +67,17 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 ## Test coverage
 
 - Unit tests cover hatch sequences, per-dinosaur recurring needs, escalating score rounds, reward-time need pausing, reset, and legacy storage migration.
-- Browser tests cover partially cracked egg dragging, hatch interruption safety, opaque spawned dinos, independent needs, physical egg separation, immediate reset, both food types, affection taps, persistent music proximity, drink interaction, and ball collision ownership.
+- Browser tests cover cannon loading, straight top/bottom-edge aiming, charge speed, smooth wall rebounds, momentum transfer, locked landings and recall, partially cracked egg dragging, hatch interruption safety, opaque spawned dinos, independent needs, physical egg separation, immediate reset, both food types, affection taps, persistent music proximity, drink interaction, and ball collision ownership.
 
 ## Next questions for playtesting
 
 - Is the small egg still discoverable without instruction?
 - Is the need bubble understood without text?
-- Is dragging a drink from inventory toward a thirsty dinosaur intuitive?
-- Is dragging a ball out of the tray intuitive?
+- Is tapping an inventory item to load the cannon discoverable without instruction?
+- Is dragging the barrel to aim and holding `FIRE` to charge intuitive on a phone?
+- Does the power meter make near and far shots predictable?
+- Is knocking dinosaurs and field items around playful rather than disruptive?
+- Is tapping a missed, locked item to recall it discoverable enough?
 - Do the 4, 6, 9, 13 progression targets stay rewarding as the herd grows?
 - Does the child understand that both eggs can be repositioned before hatching?
 - Is the ball returning to inventory clear and satisfying?
