@@ -14,10 +14,10 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 2. Watch the smaller dinosaur roam slowly without leaving the field.
 3. A need bubble asks for thirst, play, hunger, affection, or music.
 4. Drag the drink container from the item tray onto the field. It remains draggable until a dinosaur reaches it.
-5. Bring a thirsty dinosaur and the drink together—by dragging either one or through random roaming—to fulfill thirst.
+5. Bring a drink to a thirsty dinosaur, or wait for the roaming dinosaur to reach it, to fulfill thirst.
 6. Use the ball from the item tray in the same way to fulfill play.
 7. Give either of the two food types to any hungry dinosaur; both foods are valid and return to inventory after being eaten.
-8. Tap—not drag—a dinosaur asking for affection.
+8. Tap a dinosaur asking for affection. Dinosaurs roam on their own and cannot be dragged.
 9. Place the speaker on the field. It remains draggable and satisfies musical dinosaurs inside its proximity ring.
 10. Receive one heart for the correct action.
 11. At four hearts, reveal a new draggable egg on the field.
@@ -27,16 +27,16 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 
 ## Prototype rules
 
-- The dinosaur is draggable anywhere inside the walkable field bounds.
+- Dinosaurs move autonomously inside the walkable field bounds and are never draggable.
 - The play space is a bounded box inside the visible fence. The whole dinosaur is clamped inside it and visibly bumps when it reaches an edge.
 - Spawn points cover the full field, and roaming targets use the enlarged horizontal and vertical range rather than clustering around the center.
-- Random roaming pauses during direct manipulation and reactions.
+- Random roaming pauses during care reactions, then resumes automatically.
 - Every dinosaur owns an independent need and comic bubble.
 - A need bubble is a non-physical visual attached at a fixed offset above its dinosaur. It can cross the field boundary and overlap other bubbles without affecting collisions.
 - Every movable field object, including both eggs, remains draggable inside the play bounds.
 - The ball, drink, and both foods return to inventory after contact so they can be placed again.
 - Both foods fulfill the same hunger need for every dinosaur; food preference is not restricted by dinosaur type in this prototype.
-- Affection responds to a clean tap on the dinosaur and ignores drag gestures.
+- Affection responds to a tap on the dinosaur while all object-placement gestures leave dinosaurs stationary.
 - The speaker is a persistent solid field object with a larger non-physical music radius. It can satisfy multiple dinosaurs without being consumed.
 - Dino/object proximity is checked continuously, so random roaming can discover a placed toy. The dinosaur that touches it owns the interaction; it cannot fulfill another dinosaur's need.
 - Dinosaurs maintain physical separation from one another and from every visible unopened egg. Dragging an egg into a dinosaur pushes the dinosaur out of the egg collider.

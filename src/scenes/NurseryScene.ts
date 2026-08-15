@@ -6,7 +6,6 @@ const WIDTH = 1280;
 const HEIGHT = 720;
 const FIELD = { left: 70, right: 1210, top: 115, bottom: 580 };
 const DINO_SCALE = 1;
-const DINO_DRAG_SCALE = 1.08;
 const EGG_SCALE = 1;
 const REWARD_EGG_SCALE = 0.72;
 const BALL_TRAY_SCALE = 1;
@@ -33,9 +32,7 @@ interface DinoEntity {
   sprite: Phaser.GameObjects.Image;
   bubble: Phaser.GameObjects.Container;
   icon: Phaser.GameObjects.Graphics;
-  dragging: boolean;
   reacting: boolean;
-  tapMoved: boolean;
   pausedForTest?: boolean;
   needTimer?: Phaser.Time.TimerEvent;
   roamTimer?: Phaser.Time.TimerEvent;
@@ -144,14 +141,12 @@ export class NurseryScene extends Phaser.Scene {
         dino.reacting = false;
         this.tweens.killTweensOf(dino.sprite);
         dino.roamTimer?.remove(false);
-        dino.dragging = true;
         dino.sprite.setPosition(
           Phaser.Math.Clamp(x, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS),
           Phaser.Math.Clamp(y, FIELD.top + DINO_RADIUS, FIELD.bottom - DINO_RADIUS),
         );
         this.resolveDinoSeparation(dino);
         this.resolveEggCollision(dino);
-        dino.dragging = false;
         this.resolveWorldCollisions();
         return true;
       },
@@ -644,44 +639,13 @@ export class NurseryScene extends Phaser.Scene {
       .setAlpha(animate ? 0 : 1)
       .setTint(DINO_TINTS[index % DINO_TINTS.length]);
     const { bubble, icon } = this.createNeedBubble();
-    const dino: DinoEntity = { index, sprite, bubble, icon, dragging: false, reacting: false, tapMoved: false };
+    const dino: DinoEntity = { index, sprite, bubble, icon, reacting: false };
     this.dinos.push(dino);
-    sprite.setInteractive({ useHandCursor: true, draggable: true });
-    this.input.setDraggable(sprite);
-    sprite.on('pointerdown', () => {
-      dino.tapMoved = false;
-    });
+    sprite.setInteractive({ useHandCursor: true });
     sprite.on('pointerup', () => {
-      if (!dino.tapMoved && !dino.dragging && !dino.reacting && this.model.needFor(dino.index) === 'affection') {
+      if (!dino.reacting && this.model.needFor(dino.index) === 'affection') {
         this.receiveAffection(dino);
       }
-    });
-    sprite.on('dragstart', () => {
-      dino.tapMoved = true;
-      if (dino.reacting) return;
-      dino.pausedForTest = false;
-      dino.dragging = true;
-      this.tweens.killTweensOf(sprite);
-      dino.roamTimer?.remove(false);
-      sprite.setScale(DINO_DRAG_SCALE).setDepth(950);
-      this.sounds.chirp(1.15);
-    });
-    sprite.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
-      if (!dino.dragging) return;
-      sprite.setPosition(
-        Phaser.Math.Clamp(dragX, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS),
-        Phaser.Math.Clamp(dragY, FIELD.top + DINO_RADIUS, FIELD.bottom - DINO_RADIUS),
-      );
-      this.resolveDinoSeparation(dino);
-      this.resolveEggCollision(dino);
-    });
-    sprite.on('dragend', () => {
-      dino.dragging = false;
-      sprite.setScale(DINO_SCALE).setAlpha(1);
-      this.resolveDinoSeparation(dino);
-      this.resolveEggCollision(dino);
-      this.resolveWorldCollisions();
-      if (!dino.reacting) this.scheduleRoam(dino, 800);
     });
     return dino;
   }
@@ -782,10 +746,8 @@ export class NurseryScene extends Phaser.Scene {
         }
         if (distance < CARE_COLLISION_RADIUS) {
           this.pushAway(dino.sprite, this.speaker.x, this.speaker.y, CARE_COLLISION_RADIUS);
-          if (!dino.dragging) {
-            this.tweens.killTweensOf(dino.sprite);
-            this.scheduleRoam(dino, 700);
-          }
+          this.tweens.killTweensOf(dino.sprite);
+          this.scheduleRoam(dino, 700);
         }
       }
     }
@@ -806,10 +768,8 @@ export class NurseryScene extends Phaser.Scene {
       const distance = Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, egg.x, egg.y);
       if (distance >= minimum) continue;
       this.pushAway(dino.sprite, egg.x, egg.y, minimum);
-      if (!dino.dragging) {
-        this.tweens.killTweensOf(dino.sprite);
-        this.scheduleRoam(dino, 700);
-      }
+      this.tweens.killTweensOf(dino.sprite);
+      this.scheduleRoam(dino, 700);
       return true;
     }
     return false;
@@ -1093,7 +1053,7 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private roam(dino: DinoEntity): void {
-    if (dino.dragging || dino.reacting) return this.scheduleRoam(dino, 800);
+    if (dino.reacting) return this.scheduleRoam(dino, 800);
     const rawX = dino.sprite.x + Phaser.Math.Between(-380, 380);
     const rawY = dino.sprite.y + Phaser.Math.Between(-210, 210);
     let targetX = Phaser.Math.Clamp(rawX, FIELD.left + DINO_RADIUS, FIELD.right - DINO_RADIUS);

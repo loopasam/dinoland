@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('egg');
 });
 
-test('hatches, moves the egg, and fulfills thirst and play by item collision', async ({ page }) => {
+test('hatches, moves the egg, fulfills needs with items, and keeps the dinosaur tap-only', async ({ page }) => {
   test.setTimeout(60_000);
   const canvas = page.locator('canvas');
   const box = await canvas.boundingBox();
@@ -65,14 +65,9 @@ test('hatches, moves the egg, and fulfills thirst and play by item collision', a
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().drinkPlaced)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().need), { timeout: 7000 }).toBe('play');
 
-  await drag({ x: 86, y: 650 }, { x: 620, y: 430 });
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  if (state.hearts < 2) {
-    expect(state.ballPlaced).toBe(true);
-    await page.evaluate(() => window.__DINOLAND__?.pauseDino(0));
-    state = await page.evaluate(() => window.__DINOLAND__!.getState());
-    await drag({ x: state.dinoX, y: state.dinoY }, { x: state.ballX, y: state.ballY });
-  }
+  await drag({ x: 86, y: 650 }, { x: state.dinoX, y: state.dinoY });
+  state = await page.evaluate(() => window.__DINOLAND__!.getState());
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().hearts)).toBe(2);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().ballPlaced)).toBe(false);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('dinoland-progress-v2') ?? '{}').hearts)).toBe(2);
@@ -80,10 +75,11 @@ test('hatches, moves the egg, and fulfills thirst and play by item collision', a
   await page.waitForTimeout(700);
   await page.evaluate(() => window.__DINOLAND__?.pauseDino(0));
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
+  const restingPosition = { x: state.dinoX, y: state.dinoY };
   await drag({ x: state.dinoX, y: state.dinoY }, { x: 80, y: 80 });
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
-  expect(state.dinoX).toBeGreaterThanOrEqual(109);
-  expect(state.dinoY).toBeGreaterThanOrEqual(154);
+  expect(state.dinoX).toBe(restingPosition.x);
+  expect(state.dinoY).toBe(restingPosition.y);
   expect(await page.evaluate(() => {
     const game = window.__DINOLAND__;
     return game?.getState().need ?? game?.forceNeed(0, 'affection');
@@ -92,7 +88,6 @@ test('hatches, moves the egg, and fulfills thirst and play by item collision', a
   expect(state.firstBubbleVisible).toBe(true);
   expect(state.firstBubbleX).toBe(state.dinoX);
   expect(state.firstBubbleY).toBe(state.dinoY - 73);
-  expect(state.firstBubbleY).toBeLessThan(115);
 });
 
 test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({ page }) => {
