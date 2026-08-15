@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GameModel, INITIAL_HEART_TARGET, loadProgress, saveProgress, SAVE_KEY } from './GameModel';
+import {
+  GameModel, heartTargetForDinoCount, INITIAL_HEART_TARGET, loadProgress, saveProgress, SAVE_KEY,
+} from './GameModel';
 
 describe('GameModel', () => {
   it('hatches the first dinosaur after exactly four taps', () => {
@@ -25,7 +27,7 @@ describe('GameModel', () => {
   });
 
   it('cycles each dinosaur through every care interaction', () => {
-    const model = new GameModel({ hatched: true, dinoCount: 1 });
+    const model = new GameModel({ hatched: true, dinoCount: 3 });
     const cycle = ['thirst', 'play', 'hunger', 'affection', 'music', 'thirst'] as const;
     for (const expected of cycle) {
       expect(model.requestNeed(0)).toBe(expected);
@@ -33,16 +35,16 @@ describe('GameModel', () => {
     }
   });
 
-  it('resets every reward round to zero out of four', () => {
+  it('resets each reward round and increases the next egg target', () => {
     const model = new GameModel({ hatched: true, hearts: 4, dinoCount: 1, heartTarget: 4 });
     expect(model.newEggUnlocked).toBe(true);
     expect([model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg()]).toEqual([1, 2, 3, 4]);
     expect(model.finishRewardHatching()).toBe(2);
     expect(model.hearts).toBe(0);
-    expect(model.heartTarget).toBe(4);
+    expect(model.heartTarget).toBe(6);
     expect(model.dinoCount).toBe(2);
 
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       model.requestNeed(index % 2, 'play');
       expect(model.fulfillNeed(index % 2, 'play')).toBe(true);
     }
@@ -53,7 +55,8 @@ describe('GameModel', () => {
     const model = new GameModel({ hatched: true, dinoCount: 1, heartTarget: 4 });
 
     for (let expectedDinoCount = 2; expectedDinoCount <= 50; expectedDinoCount += 1) {
-      for (let heart = 0; heart < 4; heart += 1) {
+      const roundTarget = model.heartTarget;
+      for (let heart = 0; heart < roundTarget; heart += 1) {
         const dinoIndex = heart % model.dinoCount;
         expect(model.requestNeed(dinoIndex, heart % 2 === 0 ? 'thirst' : 'play')).not.toBeNull();
         expect(model.fulfillNeed(dinoIndex, model.needFor(dinoIndex)!)).toBe(true);
@@ -62,22 +65,42 @@ describe('GameModel', () => {
       expect([model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg()]).toEqual([1, 2, 3, 4]);
       expect(model.finishRewardHatching()).toBe(expectedDinoCount);
       expect(model.hearts).toBe(0);
-      expect(model.heartTarget).toBe(4);
+      expect(model.heartTarget).toBe(heartTargetForDinoCount(expectedDinoCount));
       expect(model.requestNeed(expectedDinoCount - 1)).not.toBeNull();
     }
   });
 
+  it('pauses and restores pending needs while a completed egg reward waits', () => {
+    const model = new GameModel({ hatched: true, dinoCount: 2 });
+    expect(model.heartTarget).toBe(6);
+    expect(model.requestNeed(1, 'music')).toBe('music');
+
+    for (let heart = 0; heart < 6; heart += 1) {
+      expect(model.requestNeed(0, 'play')).toBe('play');
+      expect(model.fulfillNeed(0, 'play')).toBe(true);
+    }
+
+    expect(model.newEggUnlocked).toBe(true);
+    expect(model.needFor(1)).toBeNull();
+    expect(model.requestNeed(0, 'thirst')).toBeNull();
+    expect(model.requestNeed(1)).toBeNull();
+    expect([model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg(), model.tapRewardEgg()]).toEqual([1, 2, 3, 4]);
+    model.finishRewardHatching();
+    expect(model.heartTarget).toBe(9);
+    expect(model.requestNeed(1)).toBe('music');
+  });
+
   it('loads legacy progress and saves scalable progress', () => {
     const legacy = JSON.stringify({ hatched: true, hearts: 2, secondEggHatched: true });
-    expect(loadProgress({ getItem: () => legacy })).toEqual({ hatched: true, hearts: 0, heartTarget: 4, dinoCount: 2 });
+    expect(loadProgress({ getItem: () => legacy })).toEqual({ hatched: true, hearts: 0, heartTarget: 6, dinoCount: 2 });
     expect(loadProgress({ getItem: () => '{broken' })).toEqual({
       hatched: false, hearts: 0, heartTarget: INITIAL_HEART_TARGET, dinoCount: 0,
     });
     const setItem = vi.fn();
-    saveProgress({ setItem }, { hatched: true, hearts: 1, heartTarget: 4, dinoCount: 3 });
+    saveProgress({ setItem }, { hatched: true, hearts: 1, heartTarget: 9, dinoCount: 3 });
     expect(setItem).toHaveBeenCalledWith(
       SAVE_KEY,
-      '{"hatched":true,"hearts":1,"heartTarget":4,"dinoCount":3}',
+      '{"hatched":true,"hearts":1,"heartTarget":9,"dinoCount":3}',
     );
   });
 

@@ -20,9 +20,9 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 8. Tap a dinosaur asking for affection. Dinosaurs roam on their own and cannot be dragged.
 9. Place the speaker on the field. It remains draggable and satisfies musical dinosaurs inside its proximity ring.
 10. Receive one heart for the correct action.
-11. At four hearts, reveal a new draggable egg on the field.
+11. Fill the current heart target to reveal a new draggable egg on the field. Targets grow with the herd: 4, 6, 9, 13, 18, and so on.
 12. Tap the new egg four times to hatch another independently managed triceratops.
-13. Reset the round to zero hearts and repeat the four-heart target for the next egg.
+13. While the full meter says `OPEN YOUR EGG!`, care needs pause so no actions are wasted. Hatching resets the round to zero, increases the next target, and resumes every dinosaur's care cycle.
 14. Continue caring for the growing herd without failure states.
 
 ## Prototype rules
@@ -43,6 +43,8 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 - Thirst, play, hunger, affection, and music cycle independently per dinosaur for predictable prototype testing.
 - A newly hatched dinosaur already has a fully visible first need when it becomes playable; later needs recur after its own need is completed.
 - Performing the wrong action is harmless but gives no heart.
+- Each successful action sends a visible heart into the `NEXT EGG` meter. The meter celebrates its halfway point and the completed target.
+- The first egg reward costs four hearts. Each later target adds the current herd size, producing 4, 6, 9, 13, 18, 24, and progressively longer rounds.
 - Progress persists locally: first hatch, current heart round, target, and herd size.
 - The reset control clears all progress immediately when clicked.
 
@@ -56,7 +58,7 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 
 ## Test coverage
 
-- Unit tests cover hatch sequences, per-dinosaur recurring needs, repeated four-heart score rounds, reset, and legacy storage migration.
+- Unit tests cover hatch sequences, per-dinosaur recurring needs, escalating score rounds, reward-time need pausing, reset, and legacy storage migration.
 - Browser tests cover partially cracked egg dragging, hatch interruption safety, opaque spawned dinos, independent needs, physical egg separation, immediate reset, both food types, affection taps, persistent music proximity, drink interaction, and ball collision ownership.
 
 ## Next questions for playtesting
@@ -65,7 +67,7 @@ The whole prototype takes place on one fixed field screen. The current mechanics
 - Is the need bubble understood without text?
 - Is dragging a drink from inventory toward a thirsty dinosaur intuitive?
 - Is dragging a ball out of the tray intuitive?
-- Is four hearts too fast or too slow for the second egg to appear?
+- Do the 4, 6, 9, 13 progression targets stay rewarding as the herd grows?
 - Does the child understand that both eggs can be repositioned before hatching?
 - Is the ball returning to inventory clear and satisfying?
 - Does random roaming make the dinosaur feel alive or make it harder to grab?

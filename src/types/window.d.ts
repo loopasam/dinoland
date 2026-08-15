@@ -12,6 +12,7 @@ declare global {
         needs: Array<DinoNeed | null>;
         hearts: number;
         heartTarget: number;
+        scoreText: string;
         dinoCount: number;
         newEggUnlocked: boolean;
         secondEggVisible: boolean;

@@ -98,7 +98,7 @@ export class NurseryScene extends Phaser.Scene {
       for (let index = 0; index < this.model.dinoCount; index += 1) {
         const dino = this.spawnDino(index, this.spawnPointFor(index), false);
         this.scheduleRoam(dino, 900 + index * 350);
-        this.scheduleNeed(dino, 600 + index * 350);
+        if (!this.model.newEggUnlocked) this.scheduleNeed(dino, 600 + index * 350);
       }
       this.refreshRewardEgg();
     } else {
@@ -184,6 +184,7 @@ export class NurseryScene extends Phaser.Scene {
       needs: this.dinos.map((dino) => this.model.needFor(dino.index)),
       hearts: this.model.hearts,
       heartTarget: this.model.heartTarget,
+      scoreText: this.heartLabel.text,
       dinoCount: this.model.dinoCount,
       newEggUnlocked: this.model.newEggUnlocked,
       secondEggVisible: this.rewardEgg.visible,
@@ -430,7 +431,7 @@ export class NurseryScene extends Phaser.Scene {
 
   private createProgress(): void {
     this.add.rectangle(148, 61, 248, 76, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1).setDepth(801);
-    this.add.text(40, 34, 'SCORE', { color: '#93a4af', fontSize: '16px', fontFamily: 'monospace' }).setDepth(802);
+    this.add.text(40, 34, 'NEXT EGG', { color: '#93a4af', fontSize: '16px', fontFamily: 'monospace' }).setDepth(802);
     this.heartLabel = this.add.text(40, 54, '', {
       color: '#ffffff', fontSize: '25px', fontStyle: 'bold', fontFamily: 'monospace',
     }).setDepth(802);
@@ -576,6 +577,9 @@ export class NurseryScene extends Phaser.Scene {
         this.rewardCrack.clear();
         const index = this.model.dinoCount;
         this.model.finishRewardHatching();
+        for (const existingDino of this.dinos) {
+          this.scheduleNeed(existingDino, 900 + existingDino.index * 300);
+        }
         const dino = this.spawnDino(index, point, true);
         this.showFirstNeed(dino);
         saveProgress(localStorage, this.model.serialize());
@@ -667,6 +671,8 @@ export class NurseryScene extends Phaser.Scene {
     forced?: DinoNeed,
   ): void {
     dino.needTimer?.remove(false);
+    dino.needTimer = undefined;
+    if (this.model.newEggUnlocked || this.model.rewardEggHatching) return;
     dino.needTimer = this.time.delayedCall(delay, () => {
       dino.needTimer = undefined;
       const need = this.model.requestNeed(dino.index, forced);
@@ -971,9 +977,34 @@ export class NurseryScene extends Phaser.Scene {
   private completeNeed(dino: DinoEntity): void {
     dino.bubble.setVisible(false);
     saveProgress(localStorage, this.model.serialize());
+    this.flyHeartToScore(dino);
     this.updateProgress(true);
     this.celebrate(dino);
-    this.scheduleNeed(dino, 4200);
+    if (this.model.newEggUnlocked) this.pauseCareForReward();
+    else this.scheduleNeed(dino, 4200);
+  }
+
+  private pauseCareForReward(): void {
+    for (const dino of this.dinos) {
+      dino.needTimer?.remove(false);
+      dino.needTimer = undefined;
+      dino.bubble.setVisible(false);
+    }
+  }
+
+  private flyHeartToScore(dino: DinoEntity): void {
+    const heart = this.add.text(dino.sprite.x, dino.sprite.y - 45, '♥', {
+      color: '#ff7f96', fontSize: '38px', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(1000);
+    this.tweens.add({
+      targets: heart,
+      x: 94,
+      y: 64,
+      scale: 0.55,
+      duration: 620,
+      ease: 'Cubic.In',
+      onComplete: () => heart.destroy(),
+    });
   }
 
   private finishBallDrag(): void {
@@ -1088,9 +1119,15 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private updateProgress(animate: boolean): void {
-    this.heartLabel.setText(`${this.model.hearts}  /  ${this.model.heartTarget}`);
+    const rewardReady = this.model.newEggUnlocked;
+    this.heartLabel
+      .setText(rewardReady ? 'OPEN YOUR EGG!' : `${this.model.hearts}  /  ${this.model.heartTarget}`)
+      .setColor(rewardReady ? '#ffdc6e' : '#ffffff');
     if (animate) this.tweens.add({ targets: this.heartLabel, scale: 1.3, duration: 150, yoyo: true, ease: 'Back.Out' });
-    if (this.model.newEggUnlocked && !this.rewardEgg.visible && !this.model.rewardEggHatching) {
+    if (animate && !rewardReady && this.model.hearts === Math.ceil(this.model.heartTarget / 2)) {
+      this.showSparkles(148, 61, 0xffdc6e);
+    }
+    if (rewardReady && !this.rewardEgg.visible && !this.model.rewardEggHatching) {
       this.armRewardEgg();
       this.rewardEgg.setVisible(true).setAlpha(0).setScale(0).setDepth(REWARD_EGG_DEPTH);
       this.tweens.add({ targets: this.rewardEgg, scale: REWARD_EGG_SCALE, alpha: 1, duration: 700, ease: 'Back.Out' });

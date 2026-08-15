@@ -90,7 +90,7 @@ test('hatches, moves the egg, fulfills needs with items, and keeps the dinosaur 
   expect(state.firstBubbleY).toBe(state.dinoY - 73);
 });
 
-test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({ page }) => {
+test('reveals eggs with escalating targets and resumes care after each hatch', async ({ page }) => {
   test.setTimeout(60_000);
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({ hatched: true, hearts: 4, secondEggHatched: false })));
   await page.reload();
@@ -124,7 +124,7 @@ test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().secondDinoAlpha)).toBe(1);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     hearts: 0,
-    heartTarget: 4,
+    heartTarget: 6,
     dinoCount: 2,
     secondNeed: 'play',
     secondBubbleVisible: true,
@@ -153,7 +153,7 @@ test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({
     secondBubbleAlpha: 1,
   });
 
-  for (const dinoIndex of [1, 0, 1]) {
+  for (const dinoIndex of [1, 0, 1, 0, 1]) {
     const completed = await page.evaluate((index) => {
       const game = window.__DINOLAND__;
       if (!game) return false;
@@ -163,12 +163,15 @@ test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({
     expect(completed).toBe(true);
   }
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
-    hearts: 4,
-    heartTarget: 4,
+    hearts: 6,
+    heartTarget: 6,
     dinoCount: 2,
     secondEggVisible: true,
     secondEggBusy: false,
+    scoreText: 'OPEN YOUR EGG!',
   });
+  expect(await page.evaluate(() => window.__DINOLAND__?.forceNeed(0, 'play'))).toBeNull();
+  expect(await page.evaluate(() => window.__DINOLAND__?.getState().needs)).toEqual([null, null]);
   await page.waitForTimeout(800);
 
   for (let index = 0; index < 4; index += 1) {
@@ -182,9 +185,10 @@ test('reveals and reuses the four-heart egg to hatch a third dinosaur', async ({
   }
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     hearts: 0,
-    heartTarget: 4,
+    heartTarget: 9,
     dinoCount: 3,
     secondEggVisible: false,
+    scoreText: '0  /  9',
   });
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().needs[2])).not.toBeNull();
 });
@@ -193,7 +197,7 @@ test('keeps item ownership, dinosaurs, and draggable egg collisions independent'
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
     hatched: true,
     hearts: 0,
-    heartTarget: 4,
+    heartTarget: 6,
     dinoCount: 2,
   })));
   await page.reload();
@@ -234,7 +238,7 @@ test('keeps item ownership, dinosaurs, and draggable egg collisions independent'
 
   expect(state.need).toBe('play');
 
-  for (const dinoIndex of [0, 1, 0]) {
+  for (const dinoIndex of [0, 1, 0, 1, 0]) {
     expect(await page.evaluate((index) => {
       const game = window.__DINOLAND__;
       if (!game) return false;

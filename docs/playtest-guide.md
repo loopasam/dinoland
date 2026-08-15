@@ -10,16 +10,16 @@ Observe:
 - Does the child try tapping the dinosaur when the heart bubble appears?
 - Does the child understand that the speaker can stay on the field and affect nearby musical dinosaurs?
 - Does that first bubble appear quickly enough after hatching to keep the child engaged?
-- Does the dinosaur visibly stop at the pool edge instead of walking through it?
 - Does the child notice the item tray when the play bubble appears?
 - Can the child drag the ball close enough to the roaming dinosaur?
 - Does receiving a heart feel meaningful?
-- Does the new egg attract attention when it appears at four hearts?
+- Does the new egg attract attention when the current heart target is completed?
+- Does `OPEN YOUR EGG!` make the next action obvious, and do paused need bubbles prevent distraction?
 - Does the child understand that the ball can be repositioned until play, then returns to inventory?
 - Does the child understand that food is consumed while the speaker remains available?
 - Does the child drag either egg before trying to hatch it?
 - Does the child notice that dinosaurs cannot overlap a visible unopened egg?
-- Can the child open the four-heart egg and notice the second dinosaur?
+- Can the child open the reward egg and notice the larger target after the new dinosaur appears?
 - Does the slower roaming feel alive without becoming distracting?
 - Does the dinosaur visibly feel contained when it bumps against the field boundary?
 - Does random roaming make the dinosaur feel alive?
