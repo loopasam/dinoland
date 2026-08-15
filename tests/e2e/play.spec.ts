@@ -538,6 +538,42 @@ test('uses cannon charge for distance and knocks dinosaurs and landed items arou
   expect(state.lastDinoImpactSpeed).toBeGreaterThan(100);
 });
 
+test('walks continuously toward nearby matching care items', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
+    hatched: true,
+    hearts: 0,
+    heartTarget: 4,
+    dinoCount: 1,
+  })));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().dinoCount)).toBe(1);
+
+  await page.evaluate(() => {
+    const game = window.__DINOLAND__;
+    game?.pauseDino(0);
+    game?.placeDino(0, 280, 250);
+    game?.forceNeed(0, 'thirst');
+    game?.placeCareItem('drink', 540, 250);
+    game?.resumeDino(0);
+  });
+  await expect.poll(
+    () => page.evaluate(() => window.__DINOLAND__?.getState().hearts),
+    { timeout: 5000 },
+  ).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().drinkPlaced)).toBe(false);
+
+  await page.evaluate(() => {
+    const game = window.__DINOLAND__;
+    game?.forceNeed(0, 'hunger');
+    game?.placeCareItem('food-a', 170, 250);
+    game?.placeCareItem('food-b', 650, 250);
+  });
+  await expect.poll(
+    () => page.evaluate(() => window.__DINOLAND__?.getState()),
+    { timeout: 5000 },
+  ).toMatchObject({ hearts: 2, foodAPlaced: true, foodBPlaced: false });
+});
+
 test('reset button immediately clears all progress', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
     hatched: true,

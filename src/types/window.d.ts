@@ -77,6 +77,12 @@ declare global {
       fulfillActiveNeed: (dinoIndex: number) => boolean;
       placeDino: (dinoIndex: number, x: number, y: number) => boolean;
       launchDino: (dinoIndex: number, vx: number, vy: number) => boolean;
+      resumeDino: (dinoIndex: number) => boolean;
+      placeCareItem: (
+        kind: 'ball' | 'drink' | 'food-a' | 'food-b' | 'speaker',
+        x: number,
+        y: number,
+      ) => boolean;
     };
   }
 }

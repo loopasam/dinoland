@@ -13,6 +13,7 @@ const BALL_FIELD_SCALE = 1.06;
 const DINO_RADIUS = 40;
 const CARE_ITEM_RADIUS = 33;
 const CARE_COLLISION_RADIUS = DINO_RADIUS + CARE_ITEM_RADIUS;
+const CARE_ATTRACTION_RADIUS = 360;
 const MUSIC_PROXIMITY_RADIUS = 125;
 const EGG_COLLISION_RADIUS = 50;
 const NEED_BUBBLE_OFFSET_Y = 73;
@@ -223,6 +224,16 @@ export class NurseryScene extends Phaser.Scene {
         dino.bounceAge = 0;
         return true;
       },
+      resumeDino: (dinoIndex) => {
+        const dino = this.dinos[dinoIndex];
+        if (!dino) return false;
+        dino.pausedForTest = false;
+        this.tweens.killTweensOf(dino.sprite);
+        dino.roamTimer?.remove(false);
+        this.scheduleRoam(dino, 0);
+        return true;
+      },
+      placeCareItem: (kind, x, y) => this.placeCareItemForTest(kind, x, y),
     };
   }
 
@@ -1085,6 +1096,7 @@ export class NurseryScene extends Phaser.Scene {
     this.sounds.bounce();
     this.showSparkles(shot.item.x, shot.item.y, 0xffdc6e);
     this.resolveWorldCollisions();
+    this.redirectDinosToNearbyCare();
     this.drawCannonAimGuide();
   }
 
@@ -1465,6 +1477,7 @@ export class NurseryScene extends Phaser.Scene {
       this.tweens.add({ targets: dino.bubble, scale: 1, alpha: 1, duration: 320, ease: 'Back.Out' });
     }
     this.sounds.chirp(1.3);
+    this.redirectDinoToNearbyCare(dino);
   }
 
   private positionNeedBubble(dino: DinoEntity): void {
@@ -1644,7 +1657,7 @@ export class NurseryScene extends Phaser.Scene {
     this.time.delayedCall(520, () => {
       dino.reacting = false;
       dino.sprite.setAngle(0).setScale(DINO_SCALE).setAlpha(1);
-      this.scheduleRoam(dino, 900);
+      this.resumeRoaming(dino);
     });
   }
 
@@ -1670,7 +1683,7 @@ export class NurseryScene extends Phaser.Scene {
     this.time.delayedCall(520, () => {
       dino.reacting = false;
       dino.sprite.setScale(DINO_SCALE).setAlpha(1);
-      this.scheduleRoam(dino, 900);
+      this.resumeRoaming(dino);
     });
   }
 
@@ -1703,7 +1716,7 @@ export class NurseryScene extends Phaser.Scene {
     this.time.delayedCall(520, () => {
       dino.reacting = false;
       dino.sprite.setScale(DINO_SCALE).setAlpha(1);
-      this.scheduleRoam(dino, 900);
+      this.resumeRoaming(dino);
     });
   }
 
@@ -1718,7 +1731,7 @@ export class NurseryScene extends Phaser.Scene {
     this.time.delayedCall(650, () => {
       dino.reacting = false;
       dino.sprite.setAngle(0).setScale(DINO_SCALE).setAlpha(1);
-      this.scheduleRoam(dino, 900);
+      this.resumeRoaming(dino);
     });
   }
 
@@ -1734,7 +1747,7 @@ export class NurseryScene extends Phaser.Scene {
     this.time.delayedCall(1050, () => {
       dino.reacting = false;
       dino.sprite.setAngle(0).setScale(DINO_SCALE).setAlpha(1);
-      this.scheduleRoam(dino, 900);
+      this.resumeRoaming(dino);
     });
   }
 
@@ -1836,10 +1849,10 @@ export class NurseryScene extends Phaser.Scene {
     dino.sprite.setFlipX(targetX < dino.sprite.x);
     const distance = Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, targetX, targetY);
     this.tweens.add({
-      targets: dino.sprite, x: targetX, y: targetY, duration: Phaser.Math.Clamp(distance * 14, 2800, 6800), ease: 'Sine.InOut',
+      targets: dino.sprite, x: targetX, y: targetY, duration: Phaser.Math.Clamp(distance * 8, 650, 3600), ease: 'Sine.InOut',
       onComplete: () => {
         dino.sprite.setScale(DINO_SCALE).setFlipX(false).setAlpha(1);
-        this.scheduleRoam(dino, Phaser.Math.Between(1500, 3000));
+        this.scheduleRoam(dino, Phaser.Math.Between(80, 220));
       },
     });
   }
@@ -1850,10 +1863,29 @@ export class NurseryScene extends Phaser.Scene {
     const minY = FIELD.top + DINO_RADIUS;
     const maxY = FIELD.bottom - DINO_RADIUS;
     const cannonClearance = DINO_RADIUS + CANNON_RADIUS + COLLISION_SKIN;
+    const careTarget = this.nearbyCareDestination(dino);
+    if (careTarget && !this.segmentIntersectsCircle(
+      dino.sprite.x,
+      dino.sprite.y,
+      careTarget.x,
+      careTarget.y,
+      CANNON.x,
+      CANNON.y,
+      cannonClearance,
+    )) return careTarget;
 
     for (let attempt = 0; attempt < 12; attempt += 1) {
-      let targetX = Phaser.Math.Clamp(dino.sprite.x + Phaser.Math.Between(-380, 380), minX, maxX);
-      let targetY = Phaser.Math.Clamp(dino.sprite.y + Phaser.Math.Between(-210, 210), minY, maxY);
+      const direction = dino.sprite.x < minX + 150
+        ? 1
+        : dino.sprite.x > maxX - 150
+          ? -1
+          : Phaser.Math.RND.sign();
+      let targetX = Phaser.Math.Clamp(
+        dino.sprite.x + direction * Phaser.Math.Between(180, 420),
+        minX,
+        maxX,
+      );
+      let targetY = Phaser.Math.Clamp(dino.sprite.y + Phaser.Math.Between(-120, 120), minY, maxY);
 
       for (const { egg, radius } of this.visibleEggObstacles()) {
         const minimum = DINO_RADIUS + radius;
@@ -1890,6 +1922,79 @@ export class NurseryScene extends Phaser.Scene {
       Phaser.Math.Clamp(dino.sprite.x + Math.cos(awayAngle) * 160, minX, maxX),
       Phaser.Math.Clamp(dino.sprite.y + Math.sin(awayAngle) * 160, minY, maxY),
     );
+  }
+
+  private nearbyCareDestination(dino: DinoEntity): Phaser.Math.Vector2 | undefined {
+    const need = this.model.needFor(dino.index);
+    const candidates: Phaser.GameObjects.Image[] = [];
+    if (need === 'play' && this.ballPlaced && !this.draggingBall) candidates.push(this.ball);
+    if (need === 'thirst' && this.drinkPlaced && !this.draggingDrink) candidates.push(this.drink);
+    if (need === 'hunger') {
+      if (this.foodAPlaced && !this.draggingFoodA) candidates.push(this.foodA);
+      if (this.foodBPlaced && !this.draggingFoodB) candidates.push(this.foodB);
+    }
+    if (need === 'music' && this.speakerPlaced && !this.draggingSpeaker) candidates.push(this.speaker);
+
+    const target = candidates
+      .filter((item) => !this.movingFieldObjects.has(item))
+      .map((item) => ({
+        item,
+        distance: Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, item.x, item.y),
+      }))
+      .filter(({ distance }) => distance <= CARE_ATTRACTION_RADIUS)
+      .sort((first, second) => first.distance - second.distance)[0];
+    if (!target) return undefined;
+
+    const triggerDistance = need === 'music' ? MUSIC_PROXIMITY_RADIUS - 8 : CARE_COLLISION_RADIUS - 4;
+    if (target.distance <= triggerDistance) return new Phaser.Math.Vector2(dino.sprite.x, dino.sprite.y);
+    const travelRatio = (target.distance - triggerDistance) / target.distance;
+    return new Phaser.Math.Vector2(
+      dino.sprite.x + (target.item.x - dino.sprite.x) * travelRatio,
+      dino.sprite.y + (target.item.y - dino.sprite.y) * travelRatio,
+    );
+  }
+
+  private redirectDinosToNearbyCare(): void {
+    for (const dino of this.dinos) this.redirectDinoToNearbyCare(dino);
+  }
+
+  private redirectDinoToNearbyCare(dino: DinoEntity): boolean {
+    if (dino.pausedForTest || dino.reacting || dino.bouncing || !this.nearbyCareDestination(dino)) return false;
+    this.tweens.killTweensOf(dino.sprite);
+    dino.roamTimer?.remove(false);
+    dino.roamTimer = undefined;
+    this.roam(dino);
+    return true;
+  }
+
+  private resumeRoaming(dino: DinoEntity): void {
+    if (!this.redirectDinoToNearbyCare(dino)) this.scheduleRoam(dino, 120);
+  }
+
+  private placeCareItemForTest(kind: InventoryItemKind, x: number, y: number): boolean {
+    const item = kind === 'ball'
+      ? this.ball
+      : kind === 'drink'
+        ? this.drink
+        : kind === 'food-a'
+          ? this.foodA
+          : kind === 'food-b'
+            ? this.foodB
+            : this.speaker;
+    this.stopFieldObject(item);
+    item.setPosition(
+      Phaser.Math.Clamp(x, FIELD.left + CARE_ITEM_RADIUS, FIELD.right - CARE_ITEM_RADIUS),
+      Phaser.Math.Clamp(y, FIELD.top + CARE_ITEM_RADIUS, FIELD.bottom - CARE_ITEM_RADIUS),
+    ).setScale(BALL_FIELD_SCALE).setAlpha(1).setAngle(0);
+    if (kind === 'ball') this.ballPlaced = true;
+    else if (kind === 'drink') this.drinkPlaced = true;
+    else if (kind === 'food-a') this.foodAPlaced = true;
+    else if (kind === 'food-b') this.foodBPlaced = true;
+    else this.speakerPlaced = true;
+    this.lockPlacedItem(item);
+    this.resolveWorldCollisions();
+    this.redirectDinosToNearbyCare();
+    return true;
   }
 
   private segmentIntersectsCircle(
