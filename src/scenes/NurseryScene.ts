@@ -303,6 +303,7 @@ export class NurseryScene extends Phaser.Scene {
       hearts: this.model.hearts,
       heartTarget: this.model.heartTarget,
       scoreText: this.heartLabel.text,
+      fireControlSymbol: this.cannonFireLabel.text,
       cannonLoaded: this.cannonLoadedItem ? this.itemName(this.needForItem(this.cannonLoadedItem)) : null,
       cannonPower: Number(this.cannonPower.toFixed(2)),
       lastCannonPower: Number(this.lastCannonPower.toFixed(2)),
@@ -355,6 +356,7 @@ export class NurseryScene extends Phaser.Scene {
       lootReady: this.model.lootReady,
       lootVisible: this.lootBox.visible,
       cannonBoostReady: this.model.cannonBoostReady,
+      magicSlotSymbol: this.boostLabel.text,
       heartTextures: this.heartIcons.map((heart) => heart.texture.key),
       lootCelebrationVisible: this.lootAnnouncement?.visible ?? false,
       lootX: Math.round(this.lootBox.x),
@@ -454,6 +456,29 @@ export class NurseryScene extends Phaser.Scene {
     graphics.lineStyle(4, 0x71828d, 1).strokeCircle(20, 23, 15).strokeCircle(38, 23, 15)
       .lineBetween(8, 25, 30, 55).lineBetween(30, 55, 52, 25);
     graphics.generateTexture('heart-empty', 60, 60);
+    graphics.clear();
+
+    const drawScoreHeart = (fill: number, stroke: number, shine: boolean): void => {
+      const points = Array.from({ length: 48 }, (_, index) => {
+        const angle = (index / 48) * Math.PI * 2;
+        const x = 24 + Math.pow(Math.sin(angle), 3) * 19;
+        const y = 25 - (
+          13 * Math.cos(angle)
+          - 5 * Math.cos(angle * 2)
+          - 2 * Math.cos(angle * 3)
+          - Math.cos(angle * 4)
+        );
+        return new Phaser.Math.Vector2(x, y);
+      });
+      graphics.fillStyle(fill, 1).fillPoints(points, true);
+      graphics.lineStyle(3, stroke, 1).strokePoints(points, true);
+      if (shine) graphics.fillStyle(0xffdbe3, 0.9).fillEllipse(14, 15, 7, 10);
+    };
+    drawScoreHeart(0x322831, 0xb07a8d, false);
+    graphics.generateTexture('score-heart-empty', 50, 50);
+    graphics.clear();
+    drawScoreHeart(0xf17691, 0x7c364d, true);
+    graphics.generateTexture('score-heart', 50, 50);
     graphics.clear();
 
     graphics.fillStyle(0xb67ad9, 1).fillRect(5, 14, 70, 58);
@@ -617,30 +642,27 @@ export class NurseryScene extends Phaser.Scene {
       this.cannonBarrel.setPosition(CANNON.x, CANNON.y);
     });
 
-    this.add.text(CANNON.x, CANNON.y + 49, 'MAGIC FLOWER', {
-      color: '#d8edcf', fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(630);
-
     const controlPanel = this.add.graphics().setDepth(701);
     controlPanel.fillStyle(0x101a21, 0.98).fillRoundedRect(640, 638, 600, 78, 15);
     controlPanel.lineStyle(4, 0x344b50, 1).strokeRoundedRect(640, 638, 600, 78, 15);
     controlPanel.lineStyle(2, 0x7fa56e, 0.75).strokeRoundedRect(644, 642, 592, 70, 12);
-    controlPanel.fillStyle(0x23362f, 1).fillRoundedRect(654, 635, 132, 18, 8);
-    this.add.text(666, 638, 'FLOWER LAUNCHER', {
-      color: '#bfe2a8', fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold',
-    }).setDepth(704);
+    controlPanel.fillStyle(0x446a50, 0.75).fillCircle(657, 653, 4).fillCircle(1223, 701, 4);
 
     const fireButtonArt = this.add.graphics();
-    fireButtonArt.fillStyle(0x263b35, 1).fillRoundedRect(-59, -22, 118, 44, 12);
-    fireButtonArt.lineStyle(3, 0xffdc6e, 1).strokeRoundedRect(-59, -22, 118, 44, 12);
-    fireButtonArt.lineStyle(2, 0xffffff, 0.1).lineBetween(-45, -13, 45, -13);
+    fireButtonArt.fillStyle(0x17231f, 1).fillCircle(2, 3, 27);
+    fireButtonArt.fillStyle(0x426b50, 1).fillCircle(0, 0, 25);
+    fireButtonArt.lineStyle(4, 0xffdc6e, 1).strokeCircle(0, 0, 25);
+    fireButtonArt.fillStyle(0xffffff, 0.12).fillEllipse(-7, -8, 17, 8);
     this.cannonFireButton = this.add.container(FIRE_CONTROL.x, FIRE_CONTROL.y, [fireButtonArt])
-      .setSize(118, 44).setDepth(704).setInteractive({ useHandCursor: true });
-    this.cannonFireLabel = this.add.text(FIRE_CONTROL.x, FIRE_CONTROL.y, 'HOLD & RELEASE', {
-      color: '#ffdc6e', fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold', align: 'center',
+      .setSize(62, 58).setDepth(704).setInteractive({ useHandCursor: true });
+    this.cannonFireLabel = this.add.text(FIRE_CONTROL.x + 1, FIRE_CONTROL.y - 1, '➤', {
+      color: '#fff3aa', fontFamily: 'sans-serif', fontSize: '28px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5).setDepth(705);
 
     const powerTrack = this.add.graphics().setDepth(704);
+    powerTrack.fillStyle(0xffdc6e, 1)
+      .fillTriangle(782, 660, 769, 679, 780, 679)
+      .fillTriangle(780, 674, 790, 674, 776, 691);
     powerTrack.fillStyle(0x0b1116, 1).fillRoundedRect(POWER_CONTROL.left - 2, POWER_CONTROL.y - 8, 198, 16, 7);
     powerTrack.lineStyle(2, 0x60747d, 1).strokeRoundedRect(POWER_CONTROL.left - 2, POWER_CONTROL.y - 8, 198, 16, 7);
     this.cannonPowerFill = this.add.rectangle(POWER_CONTROL.left, POWER_CONTROL.y, 0, 10, 0xe06c75, 1)
@@ -653,11 +675,13 @@ export class NurseryScene extends Phaser.Scene {
         POWER_CONTROL.y + 5,
       );
     }
-    this.add.text(POWER_CONTROL.left, POWER_CONTROL.y - 24, 'BLOOM POWER', {
-      color: '#a9bdc3', fontFamily: 'monospace', fontSize: '10px', fontStyle: 'bold',
-    }).setDepth(704);
+
+    const magicSlot = this.add.graphics().setDepth(704);
+    magicSlot.fillStyle(0x19252c, 1).fillRoundedRect(1064, 651, 52, 48, 10);
+    magicSlot.lineStyle(3, 0xc89fe7, 0.95).strokeRoundedRect(1064, 651, 52, 48, 10);
+    magicSlot.lineStyle(2, 0xffffff, 0.08).lineBetween(1073, 659, 1107, 659);
     this.boostLabel = this.add.text(1090, POWER_CONTROL.y, '', {
-      color: '#93a4af', fontFamily: 'monospace', fontSize: '11px', fontStyle: 'bold', align: 'center',
+      color: '#ffdc6e', fontFamily: 'sans-serif', fontSize: '29px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5).setDepth(705);
     this.cannonFireButton.on('pointerdown', () => this.startCannonCharge());
     this.input.on('pointerup', () => this.releaseCannonCharge());
@@ -710,13 +734,13 @@ export class NurseryScene extends Phaser.Scene {
     if (!lock) return;
     this.tweens.killTweensOf(lock);
     this.tweens.add({ targets: lock, angle: { from: -8, to: 8 }, duration: 60, yoyo: true, repeat: 2 });
-    this.cannonFireLabel.setText('LOCKED').setColor('#93a4af');
+    this.cannonFireLabel.setText('×').setColor('#93a4af');
   }
 
   private selectInventoryItem(need: DinoNeed): void {
     if (this.model.mode !== 'field' || !this.model.isNeedUnlocked(need)) return;
     if (this.cannonShot) {
-      this.cannonFireLabel.setText('WAIT').setColor('#e06c75');
+      this.cannonFireLabel.setText('…').setColor('#e06c75');
       return;
     }
     if (this.cannonLoadedItem) this.unloadCannon();
@@ -731,7 +755,7 @@ export class NurseryScene extends Phaser.Scene {
     item.setScale(0.48).setAngle(0).setDepth(635);
     this.positionLoadedItem();
     this.updateInventory();
-    this.cannonFireLabel.setText('HOLD & RELEASE').setColor('#ffdc6e');
+    this.cannonFireLabel.setText('➤').setColor('#fff3aa');
     this.showSparkles(CANNON.x, CANNON.y, 0xffdc6e);
     this.sounds.bounce();
     this.drawCannonAimGuide();
@@ -742,7 +766,7 @@ export class NurseryScene extends Phaser.Scene {
     this.cannonLoadedItem = undefined;
     this.cannonCharging = false;
     this.cannonPower = 0;
-    this.cannonFireLabel.setText('HOLD & RELEASE').setColor('#ffdc6e');
+    this.cannonFireLabel.setText('➤').setColor('#fff3aa');
     this.resetFlowerPose();
     this.drawCannonAimGuide();
     if (item) this.destroyCareItem(item);
@@ -771,14 +795,14 @@ export class NurseryScene extends Phaser.Scene {
 
   private startCannonCharge(): void {
     if (!this.cannonLoadedItem || this.cannonShot || this.model.mode !== 'field') {
-      this.cannonFireLabel.setText('PICK AN ITEM').setColor('#e06c75');
+      this.cannonFireLabel.setText('+').setColor('#e06c75');
       this.tweens.add({ targets: this.cannonFireButton, scale: 1.08, duration: 90, yoyo: true });
       return;
     }
     this.cannonCharging = true;
     this.cannonChargeStartedAt = this.time.now;
     this.cannonPower = 0;
-    this.cannonFireLabel.setText('GROWING...').setColor('#ffffff');
+    this.cannonFireLabel.setText('●').setColor('#ffffff');
     this.sounds.chirp(0.7);
   }
 
@@ -840,7 +864,7 @@ export class NurseryScene extends Phaser.Scene {
     this.animateFlowerLaunch(boosted);
     this.updateInventory();
     if (boosted) this.celebrateBoostedShot();
-    this.cannonFireLabel.setText(boosted ? 'TURBO BLOOM!' : 'WHOOSH!').setColor('#ffffff');
+    this.cannonFireLabel.setText(boosted ? '✦' : '➤').setColor('#ffffff');
     this.sounds.stomp();
     this.showSparkles(CANNON.x, CANNON.y, 0xffdc6e);
     this.drawCannonAimGuide();
@@ -856,7 +880,7 @@ export class NurseryScene extends Phaser.Scene {
   private updateCannon(seconds: number): void {
     if (this.cannonCharging) {
       this.cannonPower = Phaser.Math.Clamp((this.time.now - this.cannonChargeStartedAt) / CANNON_CHARGE_MS, 0, 1);
-      this.cannonFireLabel.setText(this.cannonPower >= 1 ? 'FULL BLOOM!' : 'GROWING...');
+      this.cannonFireLabel.setText(this.cannonPower >= 1 ? '✦' : '●');
       this.cannonBarrel.setScale(1 - this.cannonPower * 0.14, 1 + this.cannonPower * 0.08);
       this.flowerHead
         .setScale(1 + this.cannonPower * 0.18)
@@ -1280,7 +1304,7 @@ export class NurseryScene extends Phaser.Scene {
     this.fieldCareItems.add(shot.item);
     this.armFieldCareItem(shot.item);
     this.cannonPower = 0;
-    this.cannonFireLabel.setText('HOLD & RELEASE').setColor('#ffdc6e');
+    this.cannonFireLabel.setText('➤').setColor('#fff3aa');
     this.resetFlowerPose();
     this.sounds.bounce();
     this.showSparkles(shot.item.x, shot.item.y, 0xffdc6e);
@@ -1496,11 +1520,11 @@ export class NurseryScene extends Phaser.Scene {
       color: '#a9bdc3', fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold',
     }).setDepth(802);
     this.heartIcons = Array.from({ length: this.model.heartTarget }, (_, index) => this.add.image(
-      39 + index * 31,
-      42,
-      'heart-empty',
-    ).setScale(0.36).setDepth(803));
-    this.heartLabel = this.add.text(164, 39, '', {
+      43 + index * 38,
+      41,
+      'score-heart-empty',
+    ).setScale(0.56).setDepth(803));
+    this.heartLabel = this.add.text(202, 39, '', {
       color: '#ffdc6e', fontSize: '10px', fontStyle: 'bold', fontFamily: 'monospace', align: 'center',
     }).setOrigin(0, 0.5).setDepth(803);
     this.updateProgress(false);
@@ -2031,8 +2055,8 @@ export class NurseryScene extends Phaser.Scene {
     }
     if (this.boostLabel) {
       this.boostLabel
-        .setText(this.model.cannonBoostReady ? 'MAGIC\nREADY' : 'MAGIC\n—')
-        .setColor(this.model.cannonBoostReady ? '#ffdc6e' : '#93a4af');
+        .setText(this.model.cannonBoostReady ? '✦' : '')
+        .setColor('#ffdc6e');
     }
     if (this.model.cannonBoostReady) {
       this.cannonBoostGlow.setVisible(true).setScale(0.92).setAlpha(0.28);
@@ -2276,20 +2300,20 @@ export class NurseryScene extends Phaser.Scene {
   private updateProgress(animate: boolean): void {
     const rewardReady = this.model.newEggUnlocked;
     this.heartIcons.forEach((heart, index) => {
-      heart.setTexture(index < this.model.hearts ? 'heart' : 'heart-empty').setScale(0.36).setAlpha(1);
+      heart.setTexture(index < this.model.hearts ? 'score-heart' : 'score-heart-empty').setScale(0.56).setAlpha(1);
     });
-    this.heartLabel.setText(rewardReady ? 'EGG\nREADY!' : '').setColor('#ffdc6e');
+    this.heartLabel.setText('');
     if (animate && this.model.hearts > 0) {
       const latestHeart = this.heartIcons[Math.min(this.model.hearts, this.heartIcons.length) - 1];
       this.tweens.killTweensOf(latestHeart);
       this.tweens.add({
         targets: latestHeart,
-        scale: 0.52,
+        scale: 0.74,
         angle: { from: -10, to: 10 },
         duration: 170,
         yoyo: true,
         ease: 'Back.Out',
-        onComplete: () => latestHeart.setScale(0.36).setAngle(0),
+        onComplete: () => latestHeart.setScale(0.56).setAngle(0),
       });
     }
     if (animate && !rewardReady && this.model.hearts === Math.ceil(this.model.heartTarget / 2)) {

@@ -101,7 +101,7 @@ test('hatches into an immediate hunger need with both permanent inventory tools'
     need: 'hunger',
     firstBubbleVisible: true,
     firstBubbleItem: 'apple',
-    heartTextures: ['heart-empty', 'heart-empty', 'heart-empty', 'heart-empty'],
+    heartTextures: ['score-heart-empty', 'score-heart-empty', 'score-heart-empty', 'score-heart-empty'],
     fieldItemCount: 0,
   });
   const hatchedType = (await page.evaluate(() => window.__DINOLAND__!.getState())).dinoTypes[0];
@@ -112,6 +112,7 @@ test('hatches into an immediate hunger need with both permanent inventory tools'
   const ball = point(INVENTORY_X.ball, INVENTORY_Y);
   await page.mouse.click(ball.x, ball.y);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('ball');
+  expect(await page.evaluate(() => window.__DINOLAND__!.getState().fireControlSymbol)).toBe('➤');
 });
 
 test('migrates old scoring and keeps needs cycling after one heart', async ({ page }) => {
@@ -141,7 +142,7 @@ test('migrates old scoring and keeps needs cycling after one heart', async ({ pa
     hearts: 1,
     heartTarget: 4,
     newEggUnlocked: false,
-    heartTextures: ['heart', 'heart-empty', 'heart-empty', 'heart-empty'],
+    heartTextures: ['score-heart', 'score-heart-empty', 'score-heart-empty', 'score-heart-empty'],
   });
   await expect.poll(
     () => page.evaluate(() => window.__DINOLAND__?.getState()),
@@ -292,6 +293,7 @@ test('loot drops halfway and grants exactly one boosted shot', async ({ page }) 
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     lootVisible: false,
     cannonBoostReady: true,
+    magicSlotSymbol: '✦',
     lootCelebrationVisible: true,
     unlockedSlots: 3,
   });

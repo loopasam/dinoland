@@ -14,6 +14,7 @@ declare global {
         hearts: number;
         heartTarget: number;
         scoreText: string;
+        fireControlSymbol: string;
         cannonLoaded: 'apple' | 'ball' | 'water' | 'music' | 'heart' | null;
         cannonPower: number;
         lastCannonPower: number;
@@ -60,6 +61,7 @@ declare global {
         lootReady: boolean;
         lootVisible: boolean;
         cannonBoostReady: boolean;
+        magicSlotSymbol: string;
         heartTextures: string[];
         lootCelebrationVisible: boolean;
         lootX: number;
