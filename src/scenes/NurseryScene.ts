@@ -8,24 +8,24 @@ const FIELD = { left: 70, right: 1210, top: 115, bottom: 580 };
 const DINO_SCALE = 1;
 const EGG_SCALE = 1;
 const REWARD_EGG_SCALE = 0.72;
-const BALL_TRAY_SCALE = 1;
-const BALL_FIELD_SCALE = 1.06;
+const ITEM_TRAY_SCALE = 0.82;
+const ITEM_FIELD_SCALE = 1.06;
 const DINO_RADIUS = 40;
 const CARE_ITEM_RADIUS = 33;
 const CARE_COLLISION_RADIUS = DINO_RADIUS + CARE_ITEM_RADIUS;
 const CARE_ATTRACTION_RADIUS = 360;
-const MUSIC_PROXIMITY_RADIUS = 125;
 const EGG_COLLISION_RADIUS = 50;
 const NEED_BUBBLE_OFFSET_Y = 73;
 const NEED_BUBBLE_DEPTH = 680;
 const REWARD_EGG_DEPTH = 640;
 const EGG_HOME = { x: 490, y: 360 };
 const REWARD_EGG_HOME = { x: 760, y: 285 };
-const BALL_HOME = { x: 86, y: 650 };
-const DRINK_HOME = { x: 170, y: 650 };
-const FOOD_A_HOME = { x: 254, y: 650 };
-const FOOD_B_HOME = { x: 338, y: 650 };
-const SPEAKER_HOME = { x: 422, y: 650 };
+const ITEM_HOME: Record<DinoNeed, { x: number; y: number }> = {
+  hunger: { x: 95, y: 642 },
+  play: { x: 205, y: 642 },
+};
+const LOOT_HOME = { x: 945, y: 470 };
+const LOOT_RADIUS = 42;
 const CANNON = { x: 640, y: 348 };
 const FIRE_CONTROL = { x: 720, y: 650 };
 const POWER_CONTROL = { left: 850, center: 960, y: 650 };
@@ -38,10 +38,7 @@ const PHYSICS_STOP_SPEED = 34;
 const COLLISION_SKIN = 4;
 const DINO_TINTS = [0x63c7d3, 0xf2a65a, 0x9bcf6b, 0xc89fe7, 0xe77f8f];
 
-type InventoryItemKind = 'ball' | 'drink' | 'food-a' | 'food-b' | 'speaker';
-
 interface CannonShot {
-  kind: InventoryItemKind;
   item: Phaser.GameObjects.Image;
   power: number;
   vx: number;
@@ -77,11 +74,11 @@ export class NurseryScene extends Phaser.Scene {
   private sounds = new SoundGarden();
   private egg!: Phaser.GameObjects.Image;
   private rewardEgg!: Phaser.GameObjects.Image;
-  private ball!: Phaser.GameObjects.Image;
-  private drink!: Phaser.GameObjects.Image;
-  private foodA!: Phaser.GameObjects.Image;
-  private foodB!: Phaser.GameObjects.Image;
-  private speaker!: Phaser.GameObjects.Image;
+  private inventoryItems = new Map<DinoNeed, Phaser.GameObjects.Image>();
+  private careItemNeeds = new Map<Phaser.GameObjects.Image, DinoNeed>();
+  private fieldCareItems = new Set<Phaser.GameObjects.Image>();
+  private lootBox!: Phaser.GameObjects.Image;
+  private boostLabel!: Phaser.GameObjects.Text;
   private crack!: Phaser.GameObjects.Graphics;
   private rewardCrack!: Phaser.GameObjects.Graphics;
   private heartLabel!: Phaser.GameObjects.Text;
@@ -97,20 +94,7 @@ export class NurseryScene extends Phaser.Scene {
   private rewardEggPress = { x: 0, y: 0 };
   private lastEggTap = -Infinity;
   private lastRewardEggTap = -Infinity;
-  private ballPlaced = false;
-  private draggingBall = false;
-  private lastBallBump = 0;
-  private drinkPlaced = false;
-  private draggingDrink = false;
-  private lastDrinkBump = 0;
-  private foodAPlaced = false;
-  private draggingFoodA = false;
-  private foodBPlaced = false;
-  private draggingFoodB = false;
-  private lastFoodBump = 0;
-  private speakerPlaced = false;
-  private draggingSpeaker = false;
-  private lastMusicBump = 0;
+  private lastCareBump = 0;
   private collisionDebug!: Phaser.GameObjects.Graphics;
   private cannonAimGuide!: Phaser.GameObjects.Graphics;
   private cannonBarrel!: Phaser.GameObjects.Rectangle;
@@ -118,7 +102,6 @@ export class NurseryScene extends Phaser.Scene {
   private cannonFireButton!: Phaser.GameObjects.Rectangle;
   private cannonFireLabel!: Phaser.GameObjects.Text;
   private cannonAngle = -Math.PI / 2;
-  private cannonLoadedKind?: InventoryItemKind;
   private cannonLoadedItem?: Phaser.GameObjects.Image;
   private cannonShot?: CannonShot;
   private cannonAiming = false;
@@ -145,6 +128,7 @@ export class NurseryScene extends Phaser.Scene {
     this.createCannon();
     this.createItemTray();
     this.createEggs();
+    this.createLootBox();
     this.createProgress();
     this.createControls();
     this.input.on('pointerdown', () => this.sounds.unlock());
@@ -157,13 +141,11 @@ export class NurseryScene extends Phaser.Scene {
         if (!this.model.newEggUnlocked) this.scheduleNeed(dino, 600 + index * 350);
       }
       this.refreshRewardEgg();
+      this.refreshLootBox();
     } else {
       this.rewardEgg.setVisible(false);
-      this.ball.setAlpha(0.45);
-      this.drink.setAlpha(0.45);
-      this.foodA.setAlpha(0.45);
-      this.foodB.setAlpha(0.45);
-      this.speaker.setAlpha(0.45);
+      this.lootBox.setVisible(false);
+      this.updateInventory();
     }
 
     window.__DINOLAND__ = {
@@ -233,7 +215,7 @@ export class NurseryScene extends Phaser.Scene {
         this.scheduleRoam(dino, 0);
         return true;
       },
-      placeCareItem: (kind, x, y) => this.placeCareItemForTest(kind, x, y),
+      placeCareItem: (need, x, y) => this.placeCareItemForTest(need, x, y),
     };
   }
 
@@ -248,11 +230,7 @@ export class NurseryScene extends Phaser.Scene {
         this.showNeed(dino, activeNeed, true);
       }
     }
-    if (this.ballPlaced) this.ball.setDepth(20 + Math.round(this.ball.y));
-    if (this.drinkPlaced) this.drink.setDepth(20 + Math.round(this.drink.y));
-    if (this.foodAPlaced) this.foodA.setDepth(20 + Math.round(this.foodA.y));
-    if (this.foodBPlaced) this.foodB.setDepth(20 + Math.round(this.foodB.y));
-    if (this.speakerPlaced) this.speaker.setDepth(20 + Math.round(this.speaker.y));
+    for (const item of this.fieldCareItems) item.setDepth(20 + Math.round(item.y));
     this.resolveDinoSeparation();
     this.resolveWorldCollisions();
     this.drawCollisionDebug();
@@ -271,7 +249,7 @@ export class NurseryScene extends Phaser.Scene {
       hearts: this.model.hearts,
       heartTarget: this.model.heartTarget,
       scoreText: this.heartLabel.text,
-      cannonLoaded: this.cannonLoadedKind ?? null,
+      cannonLoaded: this.cannonLoadedItem ? this.itemName(this.needForItem(this.cannonLoadedItem)) : null,
       cannonPower: Number(this.cannonPower.toFixed(2)),
       lastCannonPower: Number(this.lastCannonPower.toFixed(2)),
       lastCannonSpeed: Math.round(this.lastCannonSpeed),
@@ -306,21 +284,17 @@ export class NurseryScene extends Phaser.Scene {
       firstBubbleAlpha: first?.bubble.alpha ?? 0,
       firstBubbleX: Math.round(first?.bubble.x ?? 0),
       firstBubbleY: Math.round(first?.bubble.y ?? 0),
-      ballPlaced: this.ballPlaced,
-      ballX: Math.round(this.ball.x),
-      ballY: Math.round(this.ball.y),
-      drinkPlaced: this.drinkPlaced,
-      drinkX: Math.round(this.drink.x),
-      drinkY: Math.round(this.drink.y),
-      foodAPlaced: this.foodAPlaced,
-      foodAX: Math.round(this.foodA.x),
-      foodAY: Math.round(this.foodA.y),
-      foodBPlaced: this.foodBPlaced,
-      foodBX: Math.round(this.foodB.x),
-      foodBY: Math.round(this.foodB.y),
-      speakerPlaced: this.speakerPlaced,
-      speakerX: Math.round(this.speaker.x),
-      speakerY: Math.round(this.speaker.y),
+      fieldItemCount: this.fieldCareItems.size,
+      fieldItems: [...this.fieldCareItems].map((item) => ({
+        type: this.itemName(this.needForItem(item)),
+        x: Math.round(item.x),
+        y: Math.round(item.y),
+      })),
+      lootReady: this.model.lootReady,
+      lootVisible: this.lootBox.visible,
+      cannonBoostReady: this.model.cannonBoostReady,
+      lootX: Math.round(this.lootBox.x),
+      lootY: Math.round(this.lootBox.y),
       eggX: Math.round(this.egg.x),
       eggY: Math.round(this.egg.y),
       secondEggX: Math.round(this.rewardEgg.x),
@@ -354,37 +328,25 @@ export class NurseryScene extends Phaser.Scene {
     graphics.generateTexture('egg', 80, 104);
     graphics.clear();
 
-    graphics.fillStyle(0xe06c75, 1).fillCircle(30, 30, 27);
-    graphics.lineStyle(5, 0x182027, 1).strokeCircle(30, 30, 27);
-    graphics.lineStyle(3, 0x182027, 0.7).lineBetween(11, 11, 49, 49).lineBetween(49, 11, 11, 49);
+    graphics.fillStyle(0xe06c75, 1).fillCircle(30, 33, 24);
+    graphics.lineStyle(5, 0x182027, 1).strokeCircle(30, 33, 24);
+    graphics.lineStyle(5, 0x182027, 1).lineBetween(31, 9, 34, 2);
+    graphics.fillStyle(0x6ea957, 1).fillEllipse(41, 8, 18, 10);
+    graphics.lineStyle(3, 0x182027, 1).strokeEllipse(41, 8, 18, 10);
+    graphics.generateTexture('apple', 60, 60);
+    graphics.clear();
+
+    graphics.fillStyle(0x6aa9e9, 1).fillCircle(30, 30, 25);
+    graphics.lineStyle(5, 0x182027, 1).strokeCircle(30, 30, 25);
+    graphics.lineStyle(4, 0xffffff, 0.9).lineBetween(12, 18, 48, 42).lineBetween(12, 42, 48, 18);
     graphics.generateTexture('ball', 60, 60);
     graphics.clear();
 
-    graphics.fillStyle(0x55c2e8, 1).fillRect(5, 12, 50, 40);
-    graphics.lineStyle(5, 0x182027, 1).strokeRect(5, 12, 50, 40);
-    graphics.fillStyle(0xd8f5ff, 1).fillRect(11, 18, 38, 10);
-    graphics.lineStyle(3, 0x182027, 0.75).lineBetween(30, 2, 19, 18).lineBetween(30, 2, 41, 18);
-    graphics.generateTexture('drink', 60, 60);
-    graphics.clear();
-
-    graphics.fillStyle(0x9bcf6b, 1).fillTriangle(30, 4, 56, 52, 4, 52);
-    graphics.lineStyle(5, 0x182027, 1).strokeTriangle(30, 4, 56, 52, 4, 52);
-    graphics.lineStyle(3, 0xf4f6f8, 0.75).lineBetween(18, 40, 42, 40);
-    graphics.generateTexture('food-a', 60, 60);
-    graphics.clear();
-
-    graphics.fillStyle(0xc89fe7, 1).fillCircle(30, 30, 26);
-    graphics.lineStyle(5, 0x182027, 1).strokeCircle(30, 30, 26);
-    graphics.fillStyle(0xf4f6f8, 0.8).fillCircle(22, 22, 6).fillCircle(39, 35, 5);
-    graphics.generateTexture('food-b', 60, 60);
-    graphics.clear();
-
-    graphics.fillStyle(0x59636e, 1).fillRect(4, 7, 52, 46);
-    graphics.lineStyle(5, 0x182027, 1).strokeRect(4, 7, 52, 46);
-    graphics.fillStyle(0xf4f6f8, 1).fillRect(13, 13, 34, 8);
-    graphics.fillStyle(0xe06c75, 1).fillCircle(19, 37, 9);
-    graphics.fillStyle(0x55c2e8, 1).fillCircle(41, 37, 9);
-    graphics.generateTexture('speaker', 60, 60);
+    graphics.fillStyle(0xb67ad9, 1).fillRect(5, 14, 70, 58);
+    graphics.lineStyle(5, 0x182027, 1).strokeRect(5, 14, 70, 58);
+    graphics.fillStyle(0xffdc6e, 1).fillRect(34, 14, 12, 58).fillRect(5, 34, 70, 12);
+    graphics.lineStyle(4, 0x182027, 1).strokeRect(5, 14, 70, 58);
+    graphics.generateTexture('loot', 80, 80);
     graphics.destroy();
   }
 
@@ -398,21 +360,12 @@ export class NurseryScene extends Phaser.Scene {
       if (!dino.sprite.visible) continue;
       this.collisionDebug.lineStyle(3, 0xffffff, 0.85).strokeCircle(dino.sprite.x, dino.sprite.y, DINO_RADIUS);
     }
-    if (this.ballPlaced) {
-      this.collisionDebug.lineStyle(3, 0xff7882, 0.9).strokeCircle(this.ball.x, this.ball.y, CARE_ITEM_RADIUS);
+    for (const item of this.fieldCareItems) {
+      const color = this.needForItem(item) === 'hunger' ? 0xe06c75 : 0x6aa9e9;
+      this.collisionDebug.lineStyle(3, color, 0.9).strokeCircle(item.x, item.y, CARE_ITEM_RADIUS);
     }
-    if (this.drinkPlaced) {
-      this.collisionDebug.lineStyle(3, 0x55c2e8, 0.9).strokeCircle(this.drink.x, this.drink.y, CARE_ITEM_RADIUS);
-    }
-    if (this.foodAPlaced) {
-      this.collisionDebug.lineStyle(3, 0x9bcf6b, 0.9).strokeCircle(this.foodA.x, this.foodA.y, CARE_ITEM_RADIUS);
-    }
-    if (this.foodBPlaced) {
-      this.collisionDebug.lineStyle(3, 0xc89fe7, 0.9).strokeCircle(this.foodB.x, this.foodB.y, CARE_ITEM_RADIUS);
-    }
-    if (this.speakerPlaced) {
-      this.collisionDebug.lineStyle(2, 0xc89fe7, 0.6).strokeCircle(this.speaker.x, this.speaker.y, MUSIC_PROXIMITY_RADIUS);
-      this.collisionDebug.lineStyle(3, 0x93a4af, 0.9).strokeCircle(this.speaker.x, this.speaker.y, CARE_ITEM_RADIUS);
+    if (this.lootBox?.visible) {
+      this.collisionDebug.lineStyle(3, 0xb67ad9, 0.95).strokeCircle(this.lootBox.x, this.lootBox.y, LOOT_RADIUS);
     }
     for (const { egg, radius } of this.visibleEggObstacles()) {
       this.collisionDebug.lineStyle(3, 0xe3aa55, 0.95).strokeCircle(egg.x, egg.y, radius);
@@ -478,75 +431,52 @@ export class NurseryScene extends Phaser.Scene {
     this.add.text(POWER_CONTROL.left, POWER_CONTROL.y - 33, 'POWER', {
       color: '#93a4af', fontFamily: 'monospace', fontSize: '14px',
     }).setDepth(704);
+    this.boostLabel = this.add.text(1100, POWER_CONTROL.y, '', {
+      color: '#93a4af', fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold', align: 'center',
+    }).setOrigin(0.5).setDepth(705);
     this.cannonFireButton.on('pointerdown', () => this.startCannonCharge());
     this.input.on('pointerup', () => this.releaseCannonCharge());
     this.drawCannonAimGuide();
   }
 
   private createItemTray(): void {
-    this.add.rectangle(254, 650, 452, 92, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1).setDepth(701);
-    const slotColors = [0xe06c75, 0x55c2e8, 0x9bcf6b, 0xc89fe7, 0x93a4af];
-    [BALL_HOME.x, DRINK_HOME.x, FOOD_A_HOME.x, FOOD_B_HOME.x, SPEAKER_HOME.x].forEach((x, index) => {
-      this.add.rectangle(x, 650, 64, 64, 0x161b22, 0.7)
-        .setStrokeStyle(2, slotColors[index], 1).setDepth(702);
-    });
-    this.ball = this.add.image(BALL_HOME.x, BALL_HOME.y, 'ball').setScale(BALL_TRAY_SCALE).setDepth(704);
-    this.drink = this.add.image(DRINK_HOME.x, DRINK_HOME.y, 'drink').setScale(BALL_TRAY_SCALE).setDepth(704);
-    this.foodA = this.add.image(FOOD_A_HOME.x, FOOD_A_HOME.y, 'food-a').setScale(BALL_TRAY_SCALE).setDepth(704);
-    this.foodB = this.add.image(FOOD_B_HOME.x, FOOD_B_HOME.y, 'food-b').setScale(BALL_TRAY_SCALE).setDepth(704);
-    this.speaker = this.add.image(SPEAKER_HOME.x, SPEAKER_HOME.y, 'speaker').setScale(BALL_TRAY_SCALE).setDepth(704);
-    this.setupInventoryItem(this.ball, 'ball', () => this.ballPlaced,
-      (value) => { this.draggingBall = value; }, () => this.returnBallToTray());
-    this.setupInventoryItem(this.drink, 'drink', () => this.drinkPlaced,
-      (value) => { this.draggingDrink = value; }, () => this.returnDrinkToTray());
-    this.setupInventoryItem(this.foodA, 'food-a', () => this.foodAPlaced,
-      (value) => { this.draggingFoodA = value; }, () => this.returnFoodToTray('a'));
-    this.setupInventoryItem(this.foodB, 'food-b', () => this.foodBPlaced,
-      (value) => { this.draggingFoodB = value; }, () => this.returnFoodToTray('b'));
-    this.setupInventoryItem(this.speaker, 'speaker', () => this.speakerPlaced,
-      (value) => { this.draggingSpeaker = value; }, () => this.returnSpeakerToTray());
+    this.add.rectangle(165, 650, 280, 92, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1).setDepth(701);
+    this.createInventorySlot('hunger', 'apple', 'APPLE ∞', 0xe06c75);
+    this.createInventorySlot('play', 'ball', 'BALL ∞', 0x6aa9e9);
+    this.updateInventory();
   }
 
-  private setupInventoryItem(
-    sprite: Phaser.GameObjects.Image,
-    kind: InventoryItemKind,
-    isPlaced: () => boolean,
-    setDragging: (value: boolean) => void,
-    recall: () => void,
-  ): void {
-    sprite.setInteractive({ useHandCursor: true });
-    this.input.setDraggable(sprite, false);
-    sprite.on('pointerup', () => {
-      if (this.cannonLoadedItem === sprite) {
-        this.unloadCannon();
-        return;
-      }
-      if (isPlaced()) {
-        recall();
-        return;
-      }
-      if (this.model.mode !== 'field' || this.cannonShot?.item === sprite) return;
-      if (this.cannonShot) {
-        this.cannonFireLabel.setText('WAIT').setColor('#e06c75');
-        return;
-      }
-      if (this.cannonLoadedItem) this.unloadCannon();
-      this.loadCannon(kind, sprite, setDragging);
-    });
+  private createInventorySlot(need: DinoNeed, texture: string, label: string, color: number): void {
+    const home = ITEM_HOME[need];
+    this.add.rectangle(home.x, home.y, 74, 58, 0x161b22, 0.7)
+      .setStrokeStyle(3, color, 1).setDepth(702);
+    const item = this.add.image(home.x, home.y - 3, texture)
+      .setScale(ITEM_TRAY_SCALE).setDepth(704).setInteractive({ useHandCursor: true });
+    this.add.text(home.x, 688, label, {
+      color: '#ffffff', fontFamily: 'monospace', fontSize: '14px', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(704);
+    item.on('pointerup', () => this.selectInventoryItem(need));
+    this.inventoryItems.set(need, item);
   }
 
-  private loadCannon(
-    kind: InventoryItemKind,
-    item: Phaser.GameObjects.Image,
-    setDragging: (value: boolean) => void,
-  ): void {
-    setDragging(false);
-    this.cannonLoadedKind = kind;
+  private selectInventoryItem(need: DinoNeed): void {
+    if (this.model.mode !== 'field') return;
+    if (this.cannonShot) {
+      this.cannonFireLabel.setText('WAIT').setColor('#e06c75');
+      return;
+    }
+    if (this.cannonLoadedItem) this.unloadCannon();
+    this.loadCannon(need);
+  }
+
+  private loadCannon(need: DinoNeed): void {
+    if (this.cannonLoadedItem || this.cannonShot) return;
+    const item = this.createCareItem(need);
     this.cannonLoadedItem = item;
     this.cannonPower = 0;
-    item.disableInteractive();
     item.setScale(0.58).setAngle(0).setDepth(635);
     this.positionLoadedItem();
+    this.updateInventory();
     this.cannonFireLabel.setText('HOLD FIRE').setColor('#ffdc6e');
     this.showSparkles(CANNON.x, CANNON.y, 0xffdc6e);
     this.sounds.bounce();
@@ -554,18 +484,14 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private unloadCannon(): void {
-    const kind = this.cannonLoadedKind;
-    this.cannonLoadedKind = undefined;
+    const item = this.cannonLoadedItem;
     this.cannonLoadedItem = undefined;
     this.cannonCharging = false;
     this.cannonPower = 0;
     this.cannonFireLabel.setText('HOLD FIRE').setColor('#ffdc6e');
     this.drawCannonAimGuide();
-    if (kind === 'ball') this.returnBallToTray();
-    else if (kind === 'drink') this.returnDrinkToTray();
-    else if (kind === 'food-a') this.returnFoodToTray('a');
-    else if (kind === 'food-b') this.returnFoodToTray('b');
-    else if (kind === 'speaker') this.returnSpeakerToTray();
+    if (item) this.destroyCareItem(item);
+    this.updateInventory();
   }
 
   private aimCannon(x: number, y: number): void {
@@ -605,25 +531,25 @@ export class NurseryScene extends Phaser.Scene {
 
   private fireCannon(): void {
     const item = this.cannonLoadedItem;
-    const kind = this.cannonLoadedKind;
-    if (!item || !kind) return;
-    const speed = 140 + this.cannonPower * 760;
+    if (!item) return;
+    const boosted = this.model.useCannonBoost();
+    const speed = (140 + this.cannonPower * 760) * (boosted ? 1.45 : 1);
     this.lastCannonPower = this.cannonPower;
     this.lastCannonSpeed = speed;
     this.lastShotWallBounces = 0;
     this.lastShotHitDino = false;
     this.lastDinoImpactSpeed = 0;
     this.cannonLoadedItem = undefined;
-    this.cannonLoadedKind = undefined;
-    item.setScale(BALL_FIELD_SCALE).setAngle(0).setDepth(950);
+    item.setScale(ITEM_FIELD_SCALE).setAngle(0).setDepth(950);
     this.cannonShot = {
-      kind,
       item,
       power: this.cannonPower,
       vx: Math.cos(this.cannonAngle) * speed,
       vy: Math.sin(this.cannonAngle) * speed,
       age: 0,
     };
+    if (boosted) saveProgress(localStorage, this.model.serialize());
+    this.updateInventory();
     this.cannonFireLabel.setText('FLY!').setColor('#ffffff');
     this.sounds.stomp();
     this.showSparkles(CANNON.x, CANNON.y, 0xffdc6e);
@@ -681,7 +607,6 @@ export class NurseryScene extends Phaser.Scene {
         }
         continue;
       }
-      this.markInventoryItemMoving(target.item, true);
       this.sounds.bounce();
       this.showSparkles(target.item.x, target.item.y, 0xffdc6e);
     }
@@ -717,8 +642,6 @@ export class NurseryScene extends Phaser.Scene {
           const movingFirst = firstMotion ?? this.motionFor(first.item, first.radius);
           const movingSecond = secondMotion ?? this.motionFor(second.item, second.radius);
           if (this.collideMotions(movingFirst, first.radius, movingSecond, second.radius)) {
-            this.markInventoryItemMoving(first.item, true);
-            this.markInventoryItemMoving(second.item, true);
             this.sounds.bounce();
           } else {
             if (!firstMotion) this.movingFieldObjects.delete(first.item);
@@ -863,14 +786,10 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private activeFieldObjects(): Array<{ item: Phaser.GameObjects.Image; radius: number }> {
-    const objects: Array<{ item: Phaser.GameObjects.Image; radius: number }> = [];
-    if (this.ballPlaced) objects.push({ item: this.ball, radius: CARE_ITEM_RADIUS });
-    if (this.drinkPlaced) objects.push({ item: this.drink, radius: CARE_ITEM_RADIUS });
-    if (this.foodAPlaced) objects.push({ item: this.foodA, radius: CARE_ITEM_RADIUS });
-    if (this.foodBPlaced) objects.push({ item: this.foodB, radius: CARE_ITEM_RADIUS });
-    if (this.speakerPlaced) objects.push({ item: this.speaker, radius: CARE_ITEM_RADIUS });
+    const objects = [...this.fieldCareItems].map((item) => ({ item, radius: CARE_ITEM_RADIUS }));
     if (this.egg?.visible) objects.push({ item: this.egg, radius: EGG_COLLISION_RADIUS });
     if (this.rewardEgg?.visible) objects.push({ item: this.rewardEgg, radius: EGG_COLLISION_RADIUS * REWARD_EGG_SCALE });
+    if (this.lootBox?.visible) objects.push({ item: this.lootBox, radius: LOOT_RADIUS });
     return objects;
   }
 
@@ -894,13 +813,6 @@ export class NurseryScene extends Phaser.Scene {
 
   private updateDinoBounces(delta: number): void {
     const seconds = Math.min(delta, 40) / 1000;
-    const placedItems: Array<{ item: Phaser.GameObjects.Image; placed: boolean }> = [
-      { item: this.ball, placed: this.ballPlaced },
-      { item: this.drink, placed: this.drinkPlaced },
-      { item: this.foodA, placed: this.foodAPlaced },
-      { item: this.foodB, placed: this.foodBPlaced },
-      { item: this.speaker, placed: this.speakerPlaced },
-    ];
 
     for (const dino of this.dinos) {
       if (!dino.bouncing) continue;
@@ -933,13 +845,16 @@ export class NurseryScene extends Phaser.Scene {
           this.kickFieldObject(egg, normalizedPower, radius, incomingAngle);
         }
       }
-      for (const target of placedItems) {
-        if (!target.placed) continue;
+      for (const item of this.fieldCareItems) {
         const incomingAngle = Math.atan2(dino.bounceVy, dino.bounceVx);
-        if (this.bounceDinoOffCircle(dino, target.item.x, target.item.y, CARE_ITEM_RADIUS)) {
+        if (this.bounceDinoOffCircle(dino, item.x, item.y, CARE_ITEM_RADIUS)) {
           const normalizedPower = Phaser.Math.Clamp(Math.hypot(dino.bounceVx, dino.bounceVy) / 940, 0.15, 1);
-          this.kickFieldObject(target.item, normalizedPower, CARE_ITEM_RADIUS, incomingAngle);
+          this.kickFieldObject(item, normalizedPower, CARE_ITEM_RADIUS, incomingAngle);
         }
+      }
+      if (this.lootBox?.visible && this.bounceDinoOffCircle(dino, this.lootBox.x, this.lootBox.y, LOOT_RADIUS)) {
+        const power = Phaser.Math.Clamp(Math.hypot(dino.bounceVx, dino.bounceVy) / 940, 0.15, 1);
+        this.kickFieldObject(this.lootBox, power, LOOT_RADIUS, Math.atan2(dino.bounceVy, dino.bounceVx));
       }
 
       const drag = Math.pow(PHYSICS_FRICTION, seconds);
@@ -1036,22 +951,12 @@ export class NurseryScene extends Phaser.Scene {
     motion.vx += Math.cos(angle) * impulse;
     motion.vy += Math.sin(angle) * impulse;
     motion.age = 0;
-    this.markInventoryItemMoving(item, true);
     this.sounds.bounce();
     this.showSparkles(item.x, item.y, 0xffdc6e);
   }
 
-  private markInventoryItemMoving(item: Phaser.GameObjects.Image, moving: boolean): void {
-    if (item === this.ball) this.draggingBall = moving;
-    else if (item === this.drink) this.draggingDrink = moving;
-    else if (item === this.foodA) this.draggingFoodA = moving;
-    else if (item === this.foodB) this.draggingFoodB = moving;
-    else if (item === this.speaker) this.draggingSpeaker = moving;
-  }
-
   private stopFieldObject(item: Phaser.GameObjects.Image): void {
     this.movingFieldObjects.delete(item);
-    this.markInventoryItemMoving(item, false);
     item.setAngle(0);
   }
 
@@ -1070,31 +975,14 @@ export class NurseryScene extends Phaser.Scene {
     shot.item.setPosition(
       Phaser.Math.Clamp(shot.item.x, FIELD.left + CARE_ITEM_RADIUS, FIELD.right - CARE_ITEM_RADIUS),
       Phaser.Math.Clamp(shot.item.y, FIELD.top + CARE_ITEM_RADIUS, FIELD.bottom - CARE_ITEM_RADIUS),
-    ).setScale(BALL_FIELD_SCALE).setAngle(0).setAlpha(1);
-
-    if (shot.kind === 'ball') {
-      this.draggingBall = false;
-      this.ballPlaced = true;
-    } else if (shot.kind === 'drink') {
-      this.draggingDrink = false;
-      this.drinkPlaced = true;
-    } else if (shot.kind === 'food-a') {
-      this.draggingFoodA = false;
-      this.foodAPlaced = true;
-    } else if (shot.kind === 'food-b') {
-      this.draggingFoodB = false;
-      this.foodBPlaced = true;
-    } else {
-      this.draggingSpeaker = false;
-      this.speakerPlaced = true;
-      this.sounds.music();
-      this.tweens.add({ targets: this.speaker, scale: BALL_FIELD_SCALE * 1.08, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    }
-    this.lockPlacedItem(shot.item);
+    ).setScale(ITEM_FIELD_SCALE).setAngle(0).setAlpha(1);
+    this.fieldCareItems.add(shot.item);
+    this.armFieldCareItem(shot.item);
     this.cannonPower = 0;
     this.cannonFireLabel.setText('HOLD FIRE').setColor('#ffdc6e');
     this.sounds.bounce();
     this.showSparkles(shot.item.x, shot.item.y, 0xffdc6e);
+    this.updateInventory();
     this.resolveWorldCollisions();
     this.redirectDinosToNearbyCare();
     this.drawCannonAimGuide();
@@ -1140,6 +1028,52 @@ export class NurseryScene extends Phaser.Scene {
       .setScale(REWARD_EGG_SCALE).setDepth(REWARD_EGG_DEPTH).setVisible(false);
     this.rewardCrack = this.add.graphics().setDepth(REWARD_EGG_DEPTH + 5);
     this.setupEggDrag(this.rewardEgg, true);
+  }
+
+  private createLootBox(): void {
+    this.lootBox = this.add.image(LOOT_HOME.x, LOOT_HOME.y, 'loot')
+      .setDepth(650).setVisible(false).setInteractive({ useHandCursor: true });
+    this.lootBox.on('pointerup', () => this.openLootBox());
+  }
+
+  private refreshLootBox(): void {
+    if (!this.model.lootReady || this.lootBox.visible) return;
+    this.stopFieldObject(this.lootBox);
+    this.lootBox.setPosition(LOOT_HOME.x, FIELD.top + LOOT_RADIUS)
+      .setScale(0.25).setAlpha(0).setAngle(0).setVisible(true).setDepth(650);
+    this.tweens.add({
+      targets: this.lootBox,
+      y: LOOT_HOME.y,
+      scale: 1,
+      alpha: 1,
+      duration: 650,
+      ease: 'Bounce.Out',
+      onComplete: () => this.resolveWorldCollisions(),
+    });
+    this.showSparkles(LOOT_HOME.x, LOOT_HOME.y, 0xb67ad9);
+  }
+
+  private openLootBox(): void {
+    if (!this.lootBox.visible || !this.model.collectLoot()) return;
+    this.stopFieldObject(this.lootBox);
+    saveProgress(localStorage, this.model.serialize());
+    this.updateInventory();
+    this.sounds.hatch();
+    this.showSparkles(this.lootBox.x, this.lootBox.y, 0xffdc6e);
+    this.tweens.add({
+      targets: this.lootBox,
+      scale: 1.35,
+      alpha: 0,
+      duration: 260,
+      ease: 'Back.In',
+      onComplete: () => this.lootBox.setVisible(false).setScale(1).setAlpha(1).setPosition(LOOT_HOME.x, LOOT_HOME.y),
+    });
+  }
+
+  private resetLootBox(): void {
+    this.stopFieldObject(this.lootBox);
+    this.tweens.killTweensOf(this.lootBox);
+    this.lootBox.setVisible(false).setScale(1).setAlpha(1).setAngle(0).setPosition(LOOT_HOME.x, LOOT_HOME.y);
   }
 
   private setupEggDrag(egg: Phaser.GameObjects.Image, reward: boolean): void {
@@ -1297,7 +1231,7 @@ export class NurseryScene extends Phaser.Scene {
         this.crack.clear();
         this.model.finishHatching();
         const dino = this.spawnDino(0, point, true);
-        this.showFirstNeed(dino, 'thirst');
+        this.showFirstNeed(dino, 'hunger');
         saveProgress(localStorage, this.model.serialize());
         this.tweens.add({
           targets: dino.sprite, scale: DINO_SCALE, y: point.y, alpha: 1, duration: 620, ease: 'Back.Out',
@@ -1306,11 +1240,7 @@ export class NurseryScene extends Phaser.Scene {
             dino.reacting = false;
             this.eggBusy = false;
             this.scheduleRoam(dino, 1200);
-            this.ball.setAlpha(1);
-            this.drink.setAlpha(1);
-            this.foodA.setAlpha(1);
-            this.foodB.setAlpha(1);
-            this.speaker.setAlpha(1);
+            this.updateInventory();
           },
         });
       },
@@ -1337,6 +1267,7 @@ export class NurseryScene extends Phaser.Scene {
         this.showFirstNeed(dino);
         saveProgress(localStorage, this.model.serialize());
         this.resetRewardEgg();
+        this.resetLootBox();
         this.updateProgress(true);
         this.tweens.add({
           targets: dino.sprite, scale: DINO_SCALE, y: point.y, alpha: 1, duration: 620, ease: 'Back.Out',
@@ -1410,11 +1341,6 @@ export class NurseryScene extends Phaser.Scene {
     };
     this.dinos.push(dino);
     sprite.setInteractive({ useHandCursor: true });
-    sprite.on('pointerup', () => {
-      if (!dino.reacting && !dino.bouncing && this.model.needFor(dino.index) === 'affection') {
-        this.receiveAffection(dino);
-      }
-    });
     return dino;
   }
 
@@ -1451,24 +1377,15 @@ export class NurseryScene extends Phaser.Scene {
 
   private showNeed(dino: DinoEntity, need: DinoNeed, immediate = false): void {
     dino.icon.clear();
-    if (need === 'thirst') {
-      dino.icon.fillStyle(0x55c2e8, 1).fillCircle(0, 9, 17);
-      dino.icon.fillTriangle(0, -27, -17, 9, 17, 9);
-      dino.icon.lineStyle(3, 0x182027, 0.65).strokeCircle(0, 9, 17);
-    } else if (need === 'play') {
-      dino.icon.fillStyle(0xffd36d, 1).fillCircle(0, 0, 23);
-      dino.icon.lineStyle(5, 0xf28d83, 1).arc(0, 0, 22, -1.1, 1.1).strokePath();
-      dino.icon.lineStyle(5, 0x70b9c6, 1).arc(0, 0, 22, 2.05, 4.2).strokePath();
-    } else if (need === 'hunger') {
-      dino.icon.fillStyle(0x9bcf6b, 1).fillTriangle(-23, -16, -2, 18, -30, 18);
-      dino.icon.fillStyle(0xc89fe7, 1).fillCircle(15, 2, 17);
-      dino.icon.lineStyle(3, 0x182027, 0.7).strokeCircle(15, 2, 17);
-    } else if (need === 'affection') {
-      dino.icon.fillStyle(0xe77f8f, 1).fillCircle(-11, -6, 14).fillCircle(11, -6, 14);
-      dino.icon.fillTriangle(-24, 0, 24, 0, 0, 27);
+    if (need === 'hunger') {
+      dino.icon.fillStyle(0xe06c75, 1).fillCircle(0, 4, 22);
+      dino.icon.lineStyle(4, 0x182027, 1).strokeCircle(0, 4, 22).lineBetween(1, -18, 5, -29);
+      dino.icon.fillStyle(0x6ea957, 1).fillEllipse(14, -23, 18, 10);
+      dino.icon.lineStyle(3, 0x182027, 1).strokeEllipse(14, -23, 18, 10);
     } else {
-      dino.icon.lineStyle(7, 0xc89fe7, 1).lineBetween(5, -25, 5, 15).lineBetween(5, -25, 25, -31);
-      dino.icon.fillStyle(0xc89fe7, 1).fillCircle(-5, 18, 12).fillCircle(18, 10, 10);
+      dino.icon.fillStyle(0x6aa9e9, 1).fillCircle(0, 2, 23);
+      dino.icon.lineStyle(4, 0x182027, 1).strokeCircle(0, 2, 23);
+      dino.icon.lineStyle(4, 0xffffff, 0.9).lineBetween(-16, -10, 16, 14).lineBetween(-16, 14, 16, -10);
     }
     this.tweens.killTweensOf(dino.bubble);
     this.positionNeedBubble(dino);
@@ -1490,37 +1407,15 @@ export class NurseryScene extends Phaser.Scene {
       if (!dino.sprite.visible || dino.reacting || dino.bouncing) continue;
       if (this.resolveCannonCollision(dino)) continue;
       if (this.resolveEggCollision(dino)) continue;
-      if (this.ballPlaced && !this.draggingBall
-        && Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, this.ball.x, this.ball.y) < CARE_COLLISION_RADIUS) {
-        this.playBall(dino);
+      if (this.resolveLootCollision(dino)) continue;
+      for (const item of this.fieldCareItems) {
+        if (this.movingFieldObjects.has(item)) continue;
+        const distance = Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, item.x, item.y);
+        if (distance >= CARE_COLLISION_RADIUS) continue;
+        const need = this.needForItem(item);
+        if (need && this.model.needFor(dino.index) === need) this.consumeCareItem(dino, item, need);
+        else this.bumpCareItem(dino, item);
         break;
-      }
-      if (this.drinkPlaced && !this.draggingDrink
-        && Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, this.drink.x, this.drink.y) < CARE_COLLISION_RADIUS) {
-        this.drinkWater(dino);
-        break;
-      }
-      if (this.foodAPlaced && !this.draggingFoodA
-        && Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, this.foodA.x, this.foodA.y) < CARE_COLLISION_RADIUS) {
-        this.eatFood(dino, 'a');
-        break;
-      }
-      if (this.foodBPlaced && !this.draggingFoodB
-        && Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, this.foodB.x, this.foodB.y) < CARE_COLLISION_RADIUS) {
-        this.eatFood(dino, 'b');
-        break;
-      }
-      if (this.speakerPlaced && !this.draggingSpeaker) {
-        const distance = Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, this.speaker.x, this.speaker.y);
-        if (this.model.needFor(dino.index) === 'music' && distance < MUSIC_PROXIMITY_RADIUS) {
-          this.enjoyMusic(dino);
-          break;
-        }
-        if (distance < CARE_COLLISION_RADIUS) {
-          this.pushAway(dino.sprite, this.speaker.x, this.speaker.y, CARE_COLLISION_RADIUS);
-          this.tweens.killTweensOf(dino.sprite);
-          this.scheduleRoam(dino, 700);
-        }
       }
     }
   }
@@ -1555,6 +1450,18 @@ export class NurseryScene extends Phaser.Scene {
       return true;
     }
     return false;
+  }
+
+  private resolveLootCollision(dino: DinoEntity): boolean {
+    if (!this.lootBox?.visible) return false;
+    const minimum = DINO_RADIUS + LOOT_RADIUS;
+    if (Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, this.lootBox.x, this.lootBox.y) >= minimum) {
+      return false;
+    }
+    this.pushAway(dino.sprite, this.lootBox.x, this.lootBox.y, minimum + COLLISION_SKIN);
+    this.tweens.killTweensOf(dino.sprite);
+    this.scheduleRoam(dino, 700);
+    return true;
   }
 
   private resolveDinoSeparation(focused?: DinoEntity): void {
@@ -1635,83 +1542,29 @@ export class NurseryScene extends Phaser.Scene {
     );
   }
 
-  private playBall(dino: DinoEntity): void {
-    if (this.time.now - this.lastBallBump < 500) return;
-    this.lastBallBump = this.time.now;
-    this.ballPlaced = false;
-    this.draggingBall = true;
+  private consumeCareItem(dino: DinoEntity, item: Phaser.GameObjects.Image, need: DinoNeed): void {
+    if (this.time.now - this.lastCareBump < 400) return;
+    this.lastCareBump = this.time.now;
     dino.reacting = true;
     this.tweens.killTweensOf(dino.sprite);
     dino.roamTimer?.remove(false);
-    this.sounds.bounce();
-    if (this.model.fulfillNeed(dino.index, 'play')) this.completeNeed(dino);
-    this.tweens.add({ targets: dino.sprite, y: dino.sprite.y - 7, angle: 6, duration: 210, yoyo: true });
-    this.tweens.add({
-      targets: this.ball, x: BALL_HOME.x, y: BALL_HOME.y, scale: BALL_TRAY_SCALE, angle: '+=420', alpha: 1,
-      duration: 380, ease: 'Back.In',
-      onComplete: () => {
-        this.ball.setPosition(BALL_HOME.x, BALL_HOME.y).setDepth(704).setAlpha(1);
-        this.draggingBall = false;
-      },
-    });
-    this.time.delayedCall(520, () => {
-      dino.reacting = false;
-      dino.sprite.setAngle(0).setScale(DINO_SCALE).setAlpha(1);
-      this.resumeRoaming(dino);
-    });
-  }
-
-  private drinkWater(dino: DinoEntity): void {
-    if (this.time.now - this.lastDrinkBump < 500) return;
-    this.lastDrinkBump = this.time.now;
-    this.drinkPlaced = false;
-    this.draggingDrink = true;
-    dino.reacting = true;
-    this.tweens.killTweensOf(dino.sprite);
-    dino.roamTimer?.remove(false);
-    this.sounds.drink();
-    if (this.model.fulfillNeed(dino.index, 'thirst')) this.completeNeed(dino);
-    this.tweens.add({ targets: dino.sprite, scale: DINO_SCALE * 1.06, duration: 180, yoyo: true });
-    this.tweens.add({
-      targets: this.drink, x: DRINK_HOME.x, y: DRINK_HOME.y, scale: BALL_TRAY_SCALE, alpha: 1,
-      duration: 380, ease: 'Back.In',
-      onComplete: () => {
-        this.drink.setPosition(DRINK_HOME.x, DRINK_HOME.y).setDepth(704).setAlpha(1);
-        this.draggingDrink = false;
-      },
-    });
-    this.time.delayedCall(520, () => {
-      dino.reacting = false;
-      dino.sprite.setScale(DINO_SCALE).setAlpha(1);
-      this.resumeRoaming(dino);
-    });
-  }
-
-  private eatFood(dino: DinoEntity, kind: 'a' | 'b'): void {
-    if (this.time.now - this.lastFoodBump < 500) return;
-    this.lastFoodBump = this.time.now;
-    const food = kind === 'a' ? this.foodA : this.foodB;
-    const home = kind === 'a' ? FOOD_A_HOME : FOOD_B_HOME;
-    if (kind === 'a') {
-      this.foodAPlaced = false;
-      this.draggingFoodA = true;
-    } else {
-      this.foodBPlaced = false;
-      this.draggingFoodB = true;
-    }
-    dino.reacting = true;
-    this.tweens.killTweensOf(dino.sprite);
-    dino.roamTimer?.remove(false);
-    this.sounds.eat();
-    if (this.model.fulfillNeed(dino.index, 'hunger')) this.completeNeed(dino);
+    this.stopFieldObject(item);
+    this.fieldCareItems.delete(item);
+    this.careItemNeeds.delete(item);
+    item.disableInteractive();
+    if (need === 'hunger') this.sounds.eat(); else this.sounds.giggle();
+    if (this.model.fulfillNeed(dino.index, need)) this.completeNeed(dino);
+    this.updateInventory();
     this.tweens.add({ targets: dino.sprite, scaleX: DINO_SCALE * 1.08, scaleY: DINO_SCALE * 0.94, duration: 180, yoyo: true });
     this.tweens.add({
-      targets: food, x: home.x, y: home.y, scale: BALL_TRAY_SCALE, alpha: 1,
-      duration: 380, ease: 'Back.In',
-      onComplete: () => {
-        food.setPosition(home.x, home.y).setDepth(704).setAlpha(1);
-        if (kind === 'a') this.draggingFoodA = false; else this.draggingFoodB = false;
-      },
+      targets: item,
+      x: dino.sprite.x,
+      y: dino.sprite.y - 10,
+      scale: 0,
+      alpha: 0,
+      duration: 260,
+      ease: 'Back.In',
+      onComplete: () => item.destroy(),
     });
     this.time.delayedCall(520, () => {
       dino.reacting = false;
@@ -1720,35 +1573,14 @@ export class NurseryScene extends Phaser.Scene {
     });
   }
 
-  private receiveAffection(dino: DinoEntity): void {
-    if (dino.reacting || dino.bouncing || this.model.needFor(dino.index) !== 'affection') return;
-    dino.reacting = true;
+  private bumpCareItem(dino: DinoEntity, item: Phaser.GameObjects.Image): void {
+    if (this.time.now - this.lastCareBump < 400) return;
+    this.lastCareBump = this.time.now;
+    const angle = Phaser.Math.Angle.Between(dino.sprite.x, dino.sprite.y, item.x, item.y);
+    this.pushAway(dino.sprite, item.x, item.y, CARE_COLLISION_RADIUS + COLLISION_SKIN);
     this.tweens.killTweensOf(dino.sprite);
-    dino.roamTimer?.remove(false);
-    this.sounds.affection();
-    if (this.model.fulfillNeed(dino.index, 'affection')) this.completeNeed(dino);
-    this.tweens.add({ targets: dino.sprite, angle: { from: -7, to: 7 }, scale: DINO_SCALE * 1.08, duration: 120, yoyo: true, repeat: 2 });
-    this.time.delayedCall(650, () => {
-      dino.reacting = false;
-      dino.sprite.setAngle(0).setScale(DINO_SCALE).setAlpha(1);
-      this.resumeRoaming(dino);
-    });
-  }
-
-  private enjoyMusic(dino: DinoEntity): void {
-    if (dino.reacting || this.model.needFor(dino.index) !== 'music' || this.time.now - this.lastMusicBump < 500) return;
-    this.lastMusicBump = this.time.now;
-    dino.reacting = true;
-    this.tweens.killTweensOf(dino.sprite);
-    dino.roamTimer?.remove(false);
-    this.sounds.music();
-    if (this.model.fulfillNeed(dino.index, 'music')) this.completeNeed(dino);
-    this.tweens.add({ targets: dino.sprite, y: dino.sprite.y - 8, angle: { from: -8, to: 8 }, duration: 150, yoyo: true, repeat: 3 });
-    this.time.delayedCall(1050, () => {
-      dino.reacting = false;
-      dino.sprite.setAngle(0).setScale(DINO_SCALE).setAlpha(1);
-      this.resumeRoaming(dino);
-    });
+    this.kickFieldObject(item, 0.25, CARE_ITEM_RADIUS, angle);
+    this.scheduleRoam(dino, 350);
   }
 
   private completeNeed(dino: DinoEntity): void {
@@ -1784,57 +1616,50 @@ export class NurseryScene extends Phaser.Scene {
     });
   }
 
-  private returnBallToTray(): void {
-    this.stopFieldObject(this.ball);
-    this.ballPlaced = false;
-    this.draggingBall = false;
-    this.tweens.killTweensOf(this.ball);
-    this.ball.setPosition(BALL_HOME.x, BALL_HOME.y).setScale(BALL_TRAY_SCALE).setDepth(704).setAlpha(1).setAngle(0);
-    this.armInventoryItem(this.ball);
-  }
-
-  private returnDrinkToTray(): void {
-    this.stopFieldObject(this.drink);
-    this.drinkPlaced = false;
-    this.draggingDrink = false;
-    this.tweens.killTweensOf(this.drink);
-    this.drink.setPosition(DRINK_HOME.x, DRINK_HOME.y).setScale(BALL_TRAY_SCALE).setDepth(704).setAlpha(1).setAngle(0);
-    this.armInventoryItem(this.drink);
-  }
-
-  private returnFoodToTray(kind: 'a' | 'b'): void {
-    const food = kind === 'a' ? this.foodA : this.foodB;
-    const home = kind === 'a' ? FOOD_A_HOME : FOOD_B_HOME;
-    this.stopFieldObject(food);
-    if (kind === 'a') {
-      this.foodAPlaced = false;
-      this.draggingFoodA = false;
-    } else {
-      this.foodBPlaced = false;
-      this.draggingFoodB = false;
+  private updateInventory(): void {
+    const enabled = this.model.mode === 'field';
+    for (const item of this.inventoryItems.values()) item.setAlpha(enabled ? 1 : 0.45);
+    if (this.boostLabel) {
+      this.boostLabel
+        .setText(this.model.cannonBoostReady ? 'BOOST\nREADY' : 'BOOST\n—')
+        .setColor(this.model.cannonBoostReady ? '#ffdc6e' : '#93a4af');
     }
-    this.tweens.killTweensOf(food);
-    food.setPosition(home.x, home.y).setScale(BALL_TRAY_SCALE).setDepth(704).setAlpha(1).setAngle(0);
-    this.armInventoryItem(food);
   }
 
-  private returnSpeakerToTray(): void {
-    this.stopFieldObject(this.speaker);
-    this.speakerPlaced = false;
-    this.draggingSpeaker = false;
-    this.tweens.killTweensOf(this.speaker);
-    this.speaker.setPosition(SPEAKER_HOME.x, SPEAKER_HOME.y).setScale(BALL_TRAY_SCALE).setDepth(704).setAlpha(1).setAngle(0);
-    this.armInventoryItem(this.speaker);
+  private createCareItem(need: DinoNeed): Phaser.GameObjects.Image {
+    const texture = need === 'hunger' ? 'apple' : 'ball';
+    const item = this.add.image(ITEM_HOME[need].x, ITEM_HOME[need].y, texture).setScale(ITEM_FIELD_SCALE);
+    this.careItemNeeds.set(item, need);
+    return item;
   }
 
-  private lockPlacedItem(item: Phaser.GameObjects.Image): void {
-    this.input.setDraggable(item, false);
+  private destroyCareItem(item: Phaser.GameObjects.Image): void {
+    this.stopFieldObject(item);
+    this.fieldCareItems.delete(item);
+    this.careItemNeeds.delete(item);
+    this.tweens.killTweensOf(item);
+    item.destroy();
+  }
+
+  private armFieldCareItem(item: Phaser.GameObjects.Image): void {
     item.setInteractive({ useHandCursor: true });
+    item.on('pointerup', () => this.recallCareItem(item));
   }
 
-  private armInventoryItem(item: Phaser.GameObjects.Image): void {
-    item.setInteractive({ useHandCursor: true });
-    this.input.setDraggable(item, false);
+  private recallCareItem(item: Phaser.GameObjects.Image): void {
+    if (!this.fieldCareItems.has(item)) return;
+    this.destroyCareItem(item);
+    this.updateInventory();
+    this.sounds.bounce();
+  }
+
+  private needForItem(item: Phaser.GameObjects.Image): DinoNeed | undefined {
+    return this.careItemNeeds.get(item);
+  }
+
+  private itemName(need: DinoNeed | undefined): 'apple' | 'ball' | null {
+    if (!need) return null;
+    return need === 'hunger' ? 'apple' : 'ball';
   }
 
   private scheduleRoam(dino: DinoEntity, delay: number): void {
@@ -1925,18 +1750,10 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private nearbyCareDestination(dino: DinoEntity): Phaser.Math.Vector2 | undefined {
-    const need = this.model.needFor(dino.index);
-    const candidates: Phaser.GameObjects.Image[] = [];
-    if (need === 'play' && this.ballPlaced && !this.draggingBall) candidates.push(this.ball);
-    if (need === 'thirst' && this.drinkPlaced && !this.draggingDrink) candidates.push(this.drink);
-    if (need === 'hunger') {
-      if (this.foodAPlaced && !this.draggingFoodA) candidates.push(this.foodA);
-      if (this.foodBPlaced && !this.draggingFoodB) candidates.push(this.foodB);
-    }
-    if (need === 'music' && this.speakerPlaced && !this.draggingSpeaker) candidates.push(this.speaker);
-
-    const target = candidates
-      .filter((item) => !this.movingFieldObjects.has(item))
+    const activeNeed = this.model.needFor(dino.index);
+    if (!activeNeed) return undefined;
+    const target = [...this.fieldCareItems]
+      .filter((item) => this.needForItem(item) === activeNeed && !this.movingFieldObjects.has(item))
       .map((item) => ({
         item,
         distance: Phaser.Math.Distance.Between(dino.sprite.x, dino.sprite.y, item.x, item.y),
@@ -1945,7 +1762,7 @@ export class NurseryScene extends Phaser.Scene {
       .sort((first, second) => first.distance - second.distance)[0];
     if (!target) return undefined;
 
-    const triggerDistance = need === 'music' ? MUSIC_PROXIMITY_RADIUS - 8 : CARE_COLLISION_RADIUS - 4;
+    const triggerDistance = CARE_COLLISION_RADIUS - 4;
     if (target.distance <= triggerDistance) return new Phaser.Math.Vector2(dino.sprite.x, dino.sprite.y);
     const travelRatio = (target.distance - triggerDistance) / target.distance;
     return new Phaser.Math.Vector2(
@@ -1971,27 +1788,15 @@ export class NurseryScene extends Phaser.Scene {
     if (!this.redirectDinoToNearbyCare(dino)) this.scheduleRoam(dino, 120);
   }
 
-  private placeCareItemForTest(kind: InventoryItemKind, x: number, y: number): boolean {
-    const item = kind === 'ball'
-      ? this.ball
-      : kind === 'drink'
-        ? this.drink
-        : kind === 'food-a'
-          ? this.foodA
-          : kind === 'food-b'
-            ? this.foodB
-            : this.speaker;
-    this.stopFieldObject(item);
+  private placeCareItemForTest(need: DinoNeed, x: number, y: number): boolean {
+    const item = this.createCareItem(need);
     item.setPosition(
       Phaser.Math.Clamp(x, FIELD.left + CARE_ITEM_RADIUS, FIELD.right - CARE_ITEM_RADIUS),
       Phaser.Math.Clamp(y, FIELD.top + CARE_ITEM_RADIUS, FIELD.bottom - CARE_ITEM_RADIUS),
-    ).setScale(BALL_FIELD_SCALE).setAlpha(1).setAngle(0);
-    if (kind === 'ball') this.ballPlaced = true;
-    else if (kind === 'drink') this.drinkPlaced = true;
-    else if (kind === 'food-a') this.foodAPlaced = true;
-    else if (kind === 'food-b') this.foodBPlaced = true;
-    else this.speakerPlaced = true;
-    this.lockPlacedItem(item);
+    ).setScale(ITEM_FIELD_SCALE).setAlpha(1).setAngle(0);
+    this.fieldCareItems.add(item);
+    this.armFieldCareItem(item);
+    this.updateInventory();
     this.resolveWorldCollisions();
     this.redirectDinosToNearbyCare();
     return true;
@@ -2037,6 +1842,7 @@ export class NurseryScene extends Phaser.Scene {
       this.tweens.add({ targets: this.rewardEgg, scale: REWARD_EGG_SCALE, alpha: 1, duration: 700, ease: 'Back.Out' });
       this.showSparkles(this.rewardEgg.x, this.rewardEgg.y, 0xffdc6e);
     }
+    this.refreshLootBox();
   }
 
   private celebrate(dino: DinoEntity): void {

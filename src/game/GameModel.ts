@@ -1,11 +1,13 @@
 export type PlayMode = 'egg' | 'hatching' | 'field';
-export type DinoNeed = 'thirst' | 'play' | 'hunger' | 'affection' | 'music';
+export type DinoNeed = 'hunger' | 'play';
 
 export interface SavedProgress {
   hatched: boolean;
   hearts: number;
   heartTarget: number;
   dinoCount: number;
+  lootClaimed: boolean;
+  cannonBoostReady: boolean;
 }
 
 interface LegacyProgress extends Partial<SavedProgress> {
@@ -14,20 +16,10 @@ interface LegacyProgress extends Partial<SavedProgress> {
 
 export const SAVE_KEY = 'dinoland-progress-v2';
 export const INITIAL_HEART_TARGET = 4;
-export const NEED_CYCLE: readonly DinoNeed[] = ['thirst', 'play', 'hunger', 'affection', 'music'];
 
 export function heartTargetForDinoCount(dinoCount: number): number {
   const count = Math.max(1, Math.floor(Number.isFinite(dinoCount) ? dinoCount : 1));
   return 3 + (count * (count + 1)) / 2;
-}
-
-function firstNeedFor(dinoIndex: number): DinoNeed {
-  return NEED_CYCLE[dinoIndex % NEED_CYCLE.length];
-}
-
-function nextNeedAfter(need: DinoNeed): DinoNeed {
-  const index = NEED_CYCLE.indexOf(need);
-  return NEED_CYCLE[(index + 1) % NEED_CYCLE.length];
 }
 
 export class GameModel {
@@ -37,6 +29,8 @@ export class GameModel {
   private _hearts: number;
   private _heartTarget: number;
   private _dinoCount: number;
+  private _lootClaimed: boolean;
+  private _cannonBoostReady: boolean;
   private rewardHatching = false;
   private needs: Array<DinoNeed | null>;
   private nextNeeds: DinoNeed[];
@@ -48,8 +42,10 @@ export class GameModel {
     this._dinoCount = hatched ? Math.max(1, Math.floor(progress.dinoCount ?? 1)) : 0;
     this._heartTarget = hatched ? heartTargetForDinoCount(this._dinoCount) : INITIAL_HEART_TARGET;
     this._hearts = Math.min(this._heartTarget, Math.max(0, Math.floor(progress.hearts ?? 0)));
+    this._lootClaimed = progress.lootClaimed === true;
+    this._cannonBoostReady = progress.cannonBoostReady === true;
     this.needs = Array.from({ length: this._dinoCount }, () => null);
-    this.nextNeeds = Array.from({ length: this._dinoCount }, (_, index) => firstNeedFor(index));
+    this.nextNeeds = Array.from({ length: this._dinoCount }, () => 'hunger');
   }
 
   get eggTaps(): number { return this._eggTaps; }
@@ -60,6 +56,12 @@ export class GameModel {
   get dinoCount(): number { return this._dinoCount; }
   get newEggUnlocked(): boolean { return this._mode === 'field' && this._hearts >= this._heartTarget; }
   get rewardEggHatching(): boolean { return this.rewardHatching; }
+  get lootReady(): boolean {
+    return this._mode === 'field'
+      && this._hearts >= Math.ceil(this._heartTarget / 2)
+      && !this._lootClaimed;
+  }
+  get cannonBoostReady(): boolean { return this._cannonBoostReady; }
 
   tapEgg(): number {
     if (this._mode !== 'egg') return this._eggTaps;
@@ -73,7 +75,7 @@ export class GameModel {
     this._mode = 'field';
     this._dinoCount = 1;
     this.needs = [null];
-    this.nextNeeds = ['thirst'];
+    this.nextNeeds = ['hunger'];
   }
 
   tapRewardEgg(): number {
@@ -90,8 +92,9 @@ export class GameModel {
     this._dinoCount += 1;
     this._hearts = 0;
     this._heartTarget = heartTargetForDinoCount(this._dinoCount);
+    this._lootClaimed = false;
     this.needs.push(null);
-    this.nextNeeds.push(firstNeedFor(this._dinoCount - 1));
+    this.nextNeeds.push('hunger');
     return this._dinoCount;
   }
 
@@ -102,24 +105,30 @@ export class GameModel {
   requestNeed(dinoIndex: number, forced?: DinoNeed): DinoNeed | null {
     if (this._mode !== 'field' || this.newEggUnlocked || this.rewardHatching
       || dinoIndex < 0 || dinoIndex >= this._dinoCount) return null;
-    if (this.needs[dinoIndex]) return this.needs[dinoIndex];
-    const need = forced ?? this.nextNeeds[dinoIndex] ?? 'thirst';
+    const need = forced ?? this.nextNeeds[dinoIndex] ?? 'hunger';
     this.needs[dinoIndex] = need;
-    this.nextNeeds[dinoIndex] = nextNeedAfter(need);
     return need;
   }
 
   fulfillNeed(dinoIndex: number, action: DinoNeed): boolean {
     if (this.newEggUnlocked || this.needs[dinoIndex] !== action) return false;
     this.needs[dinoIndex] = null;
+    this.nextNeeds[dinoIndex] = action === 'hunger' ? 'play' : 'hunger';
     this._hearts = Math.min(this._heartTarget, this._hearts + 1);
-    if (this.newEggUnlocked) {
-      for (let index = 0; index < this.needs.length; index += 1) {
-        const pendingNeed = this.needs[index];
-        if (pendingNeed) this.nextNeeds[index] = pendingNeed;
-        this.needs[index] = null;
-      }
-    }
+    if (this.newEggUnlocked) this.needs.fill(null);
+    return true;
+  }
+
+  collectLoot(): boolean {
+    if (!this.lootReady) return false;
+    this._lootClaimed = true;
+    this._cannonBoostReady = true;
+    return true;
+  }
+
+  useCannonBoost(): boolean {
+    if (!this._cannonBoostReady) return false;
+    this._cannonBoostReady = false;
     return true;
   }
 
@@ -130,6 +139,8 @@ export class GameModel {
     this._hearts = 0;
     this._heartTarget = INITIAL_HEART_TARGET;
     this._dinoCount = 0;
+    this._lootClaimed = false;
+    this._cannonBoostReady = false;
     this.rewardHatching = false;
     this.needs = [];
     this.nextNeeds = [];
@@ -141,14 +152,24 @@ export class GameModel {
       hearts: this._hearts,
       heartTarget: this._heartTarget,
       dinoCount: this._dinoCount,
+      lootClaimed: this._lootClaimed,
+      cannonBoostReady: this._cannonBoostReady,
     };
   }
 }
 
 export function loadProgress(storage: Pick<Storage, 'getItem'>): SavedProgress {
+  const empty = {
+    hatched: false,
+    hearts: 0,
+    heartTarget: INITIAL_HEART_TARGET,
+    dinoCount: 0,
+    lootClaimed: false,
+    cannonBoostReady: false,
+  };
   try {
     const raw = storage.getItem(SAVE_KEY);
-    if (!raw) return { hatched: false, hearts: 0, heartTarget: INITIAL_HEART_TARGET, dinoCount: 0 };
+    if (!raw) return empty;
     const parsed = JSON.parse(raw) as LegacyProgress;
     const hatched = parsed.hatched === true;
     const legacyDinoCount = parsed.secondEggHatched === true ? 2 : hatched ? 1 : 0;
@@ -161,9 +182,11 @@ export function loadProgress(storage: Pick<Storage, 'getItem'>): SavedProgress {
       hearts: isLegacySave && parsed.secondEggHatched === true ? 0 : Math.min(heartTarget, storedHearts),
       heartTarget,
       dinoCount,
+      lootClaimed: parsed.lootClaimed === true,
+      cannonBoostReady: parsed.cannonBoostReady === true,
     };
   } catch {
-    return { hatched: false, hearts: 0, heartTarget: INITIAL_HEART_TARGET, dinoCount: 0 };
+    return empty;
   }
 }
 

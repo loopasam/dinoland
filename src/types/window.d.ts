@@ -13,7 +13,7 @@ declare global {
         hearts: number;
         heartTarget: number;
         scoreText: string;
-        cannonLoaded: 'ball' | 'drink' | 'food-a' | 'food-b' | 'speaker' | null;
+        cannonLoaded: 'apple' | 'ball' | null;
         cannonPower: number;
         lastCannonPower: number;
         lastCannonSpeed: number;
@@ -46,21 +46,13 @@ declare global {
         firstBubbleAlpha: number;
         firstBubbleX: number;
         firstBubbleY: number;
-        ballPlaced: boolean;
-        ballX: number;
-        ballY: number;
-        drinkPlaced: boolean;
-        drinkX: number;
-        drinkY: number;
-        foodAPlaced: boolean;
-        foodAX: number;
-        foodAY: number;
-        foodBPlaced: boolean;
-        foodBX: number;
-        foodBY: number;
-        speakerPlaced: boolean;
-        speakerX: number;
-        speakerY: number;
+        fieldItemCount: number;
+        fieldItems: Array<{ type: 'apple' | 'ball' | null; x: number; y: number }>;
+        lootReady: boolean;
+        lootVisible: boolean;
+        cannonBoostReady: boolean;
+        lootX: number;
+        lootY: number;
         eggX: number;
         eggY: number;
         secondEggX: number;
@@ -78,11 +70,7 @@ declare global {
       placeDino: (dinoIndex: number, x: number, y: number) => boolean;
       launchDino: (dinoIndex: number, vx: number, vy: number) => boolean;
       resumeDino: (dinoIndex: number) => boolean;
-      placeCareItem: (
-        kind: 'ball' | 'drink' | 'food-a' | 'food-b' | 'speaker',
-        x: number,
-        y: number,
-      ) => boolean;
+      placeCareItem: (need: DinoNeed, x: number, y: number) => boolean;
     };
   }
 }
