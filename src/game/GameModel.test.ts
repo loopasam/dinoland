@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   GameModel,
   growthScaleForCareCount,
-  heartTargetForDinoCount,
   INITIAL_HEART_TARGET,
   loadProgress,
   saveProgress,
@@ -54,6 +53,10 @@ describe('GameModel', () => {
   it('cycles through every item type that has been unlocked', () => {
     const model = new GameModel({ hatched: true, dinoCount: 2, unlockedSlots: 5 });
     for (const expected of ['hunger', 'play', 'thirst', 'music', 'affection'] as const) {
+      if (model.newEggUnlocked) {
+        for (let tap = 0; tap < 4; tap += 1) model.tapRewardEgg();
+        model.finishRewardHatching();
+      }
       expect(model.requestNeed(0)).toBe(expected);
       expect(model.fulfillNeed(0, expected)).toBe(true);
     }
@@ -89,7 +92,7 @@ describe('GameModel', () => {
     ]);
   });
 
-  it('keeps reward eggs scalable and starts a fresh loot round', () => {
+  it('uses a fresh four-heart round for every reward egg', () => {
     const model = new GameModel({ hatched: true });
     for (let expectedCount = 2; expectedCount <= 8; expectedCount += 1) {
       while (!model.newEggUnlocked) fulfillNextNeed(model);
@@ -98,7 +101,7 @@ describe('GameModel', () => {
       expect(model.finishRewardHatching()).toBe(expectedCount);
       expect(model.hearts).toBe(0);
       expect(model.lootReady).toBe(false);
-      expect(model.heartTarget).toBe(heartTargetForDinoCount(expectedCount));
+      expect(model.heartTarget).toBe(4);
     }
   });
 
@@ -112,9 +115,10 @@ describe('GameModel', () => {
   it('migrates old saves without preserving obsolete item counts', () => {
     const legacy = JSON.stringify({ hatched: true, hearts: 9, secondEggHatched: true, apples: 0 });
     expect(loadProgress({ getItem: () => legacy })).toEqual({
+      scoringVersion: 2,
       hatched: true,
       hearts: 0,
-      heartTarget: 6,
+      heartTarget: 4,
       dinoCount: 2,
       dinoCareCounts: [0, 0],
       dinoSpecies: [],
@@ -123,6 +127,7 @@ describe('GameModel', () => {
       cannonBoostReady: false,
     });
     expect(loadProgress({ getItem: () => '{broken' })).toEqual({
+      scoringVersion: 2,
       hatched: false,
       hearts: 0,
       heartTarget: 4,
@@ -135,6 +140,26 @@ describe('GameModel', () => {
     });
   });
 
+  it('resets only the active score when migrating escalating rounds', () => {
+    const oldRound = JSON.stringify({
+      hatched: true,
+      hearts: 8,
+      heartTarget: 9,
+      dinoCount: 3,
+      dinoCareCounts: [3, 2, 1],
+      dinoSpecies: ['triceratops', 'trex', 'brachiosaurus'],
+      unlockedSlots: 4,
+    });
+    const progress = loadProgress({ getItem: () => oldRound });
+    const model = new GameModel(progress);
+
+    expect(progress).toMatchObject({ scoringVersion: 2, hearts: 0, heartTarget: 4, dinoCount: 3, unlockedSlots: 4 });
+    expect(model.requestNeed(0)).toBe('hunger');
+    expect(model.fulfillNeed(0, 'hunger')).toBe(true);
+    expect(model.hearts).toBe(1);
+    expect(model.newEggUnlocked).toBe(false);
+  });
+
   it('serializes loot state and resets cleanly', () => {
     const model = new GameModel({ hatched: true, hearts: 2 });
     model.collectLoot();
@@ -144,6 +169,7 @@ describe('GameModel', () => {
 
     model.reset();
     expect(model.serialize()).toEqual({
+      scoringVersion: 2,
       hatched: false,
       hearts: 0,
       heartTarget: 4,

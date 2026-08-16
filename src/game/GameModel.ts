@@ -9,6 +9,7 @@ export interface LootReward {
 }
 
 export interface SavedProgress {
+  scoringVersion: number;
   hatched: boolean;
   hearts: number;
   heartTarget: number;
@@ -25,6 +26,7 @@ interface LegacyProgress extends Partial<SavedProgress> {
 }
 
 export const SAVE_KEY = 'dinoland-progress-v2';
+export const SCORE_VERSION = 2;
 export const INITIAL_HEART_TARGET = 4;
 export const INITIAL_UNLOCKED_SLOTS = 2;
 export const INVENTORY_CAPACITY = INVENTORY_NEEDS.length;
@@ -35,11 +37,6 @@ export const DINO_GROWTH_PER_CARE = 0.04;
 export function growthScaleForCareCount(careCount: number): number {
   const count = Math.max(0, Math.floor(Number.isFinite(careCount) ? careCount : 0));
   return Math.min(DINO_MAX_SCALE, DINO_BABY_SCALE + count * DINO_GROWTH_PER_CARE);
-}
-
-export function heartTargetForDinoCount(dinoCount: number): number {
-  const count = Math.max(1, Math.floor(Number.isFinite(dinoCount) ? dinoCount : 1));
-  return 3 + (count * (count + 1)) / 2;
 }
 
 export class GameModel {
@@ -73,7 +70,7 @@ export class GameModel {
         ? progress.dinoSpecies[index]
         : randomDinoSpecies(this.random),
     );
-    this._heartTarget = hatched ? heartTargetForDinoCount(this._dinoCount) : INITIAL_HEART_TARGET;
+    this._heartTarget = INITIAL_HEART_TARGET;
     this._hearts = Math.min(this._heartTarget, Math.max(0, Math.floor(progress.hearts ?? 0)));
     this._unlockedSlots = clampUnlockedSlots(progress.unlockedSlots);
     this._lootClaimed = progress.lootClaimed === true;
@@ -136,7 +133,7 @@ export class GameModel {
     this._dinoCareCounts.push(0);
     this._dinoSpecies.push(randomDinoSpecies(this.random));
     this._hearts = 0;
-    this._heartTarget = heartTargetForDinoCount(this._dinoCount);
+    this._heartTarget = INITIAL_HEART_TARGET;
     this._lootClaimed = false;
     this.needs.push(null);
     this.nextNeeds.push('hunger');
@@ -204,6 +201,7 @@ export class GameModel {
 
   serialize(): SavedProgress {
     return {
+      scoringVersion: SCORE_VERSION,
       hatched: this._mode === 'field',
       hearts: this._hearts,
       heartTarget: this._heartTarget,
@@ -219,6 +217,7 @@ export class GameModel {
 
 export function loadProgress(storage: Pick<Storage, 'getItem'>): SavedProgress {
   const empty = {
+    scoringVersion: SCORE_VERSION,
     hatched: false,
     hearts: 0,
     heartTarget: INITIAL_HEART_TARGET,
@@ -237,11 +236,15 @@ export function loadProgress(storage: Pick<Storage, 'getItem'>): SavedProgress {
     const legacyDinoCount = parsed.secondEggHatched === true ? 2 : hatched ? 1 : 0;
     const isLegacySave = parsed.dinoCount === undefined;
     const dinoCount = hatched ? Math.max(1, Math.floor(parsed.dinoCount ?? legacyDinoCount)) : 0;
-    const heartTarget = hatched ? heartTargetForDinoCount(dinoCount) : INITIAL_HEART_TARGET;
+    const scoreNeedsMigration = parsed.scoringVersion !== SCORE_VERSION;
+    const heartTarget = INITIAL_HEART_TARGET;
     const storedHearts = Number.isFinite(parsed.hearts) ? Math.max(0, Math.floor(parsed.hearts ?? 0)) : 0;
     return {
+      scoringVersion: SCORE_VERSION,
       hatched,
-      hearts: isLegacySave && parsed.secondEggHatched === true ? 0 : Math.min(heartTarget, storedHearts),
+      hearts: scoreNeedsMigration || (isLegacySave && parsed.secondEggHatched === true)
+        ? 0
+        : Math.min(heartTarget, storedHearts),
       heartTarget,
       dinoCount,
       dinoCareCounts: Array.from(

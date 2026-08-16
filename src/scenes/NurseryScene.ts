@@ -26,6 +26,7 @@ const CARE_COLLISION_RADIUS = DINO_RADIUS + CARE_ITEM_RADIUS;
 const EGG_COLLISION_RADIUS = 40;
 const NEED_BUBBLE_OFFSET_Y = 62;
 const NEED_BUBBLE_SCALE = 0.78;
+const NEXT_NEED_DELAY_MS = 900;
 const NEED_BUBBLE_DEPTH = 680;
 const REWARD_EGG_DEPTH = 640;
 const EGG_HOME = { x: 490, y: 360 };
@@ -85,7 +86,7 @@ interface DinoEntity {
   bounceVy: number;
   bounceAge: number;
   pausedForTest?: boolean;
-  needTimer?: Phaser.Time.TimerEvent;
+  needDueAt?: number;
   roamTimer?: Phaser.Time.TimerEvent;
 }
 
@@ -269,7 +270,12 @@ export class NurseryScene extends Phaser.Scene {
       dino.sprite.setDepth(20 + Math.round(dino.sprite.y));
       this.syncDinoVisual(dino);
       this.positionNeedBubble(dino);
-      const activeNeed = this.model.needFor(dino.index);
+      let activeNeed = this.model.needFor(dino.index);
+      if (!activeNeed && dino.needDueAt !== undefined && performance.now() >= dino.needDueAt) {
+        dino.needDueAt = undefined;
+        activeNeed = this.model.requestNeed(dino.index);
+        if (activeNeed) this.showNeed(dino, activeNeed);
+      }
       if (activeNeed && (!dino.bubble.visible || dino.bubble.alpha < 0.99)) {
         this.showNeed(dino, activeNeed, true);
       }
@@ -1671,16 +1677,10 @@ export class NurseryScene extends Phaser.Scene {
   private scheduleNeed(
     dino: DinoEntity,
     delay = Phaser.Math.Between(6500, 9000),
-    forced?: DinoNeed,
   ): void {
-    dino.needTimer?.remove(false);
-    dino.needTimer = undefined;
+    dino.needDueAt = undefined;
     if (this.model.newEggUnlocked || this.model.rewardEggHatching) return;
-    dino.needTimer = this.time.delayedCall(delay, () => {
-      dino.needTimer = undefined;
-      const need = this.model.requestNeed(dino.index, forced);
-      if (need) this.showNeed(dino, need);
-    });
+    dino.needDueAt = performance.now() + delay;
   }
 
   private showFirstNeed(dino: DinoEntity, forced?: DinoNeed): void {
@@ -1933,13 +1933,12 @@ export class NurseryScene extends Phaser.Scene {
     this.updateProgress(true);
     this.celebrate(dino);
     if (this.model.newEggUnlocked) this.pauseCareForReward();
-    else this.scheduleNeed(dino, 4200);
+    else this.scheduleNeed(dino, NEXT_NEED_DELAY_MS);
   }
 
   private pauseCareForReward(): void {
     for (const dino of this.dinos) {
-      dino.needTimer?.remove(false);
-      dino.needTimer = undefined;
+      dino.needDueAt = undefined;
       dino.bubble.setVisible(false);
     }
   }

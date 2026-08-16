@@ -62,6 +62,7 @@ async function launchItem(
 
 async function loadField(page: Page, hearts = 0): Promise<void> {
   await page.evaluate(({ savedHearts }) => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
+    scoringVersion: 2,
     hatched: true,
     hearts: savedHearts,
     heartTarget: 4,
@@ -109,6 +110,40 @@ test('hatches into an immediate hunger need with both permanent inventory tools'
   const ball = point(INVENTORY_X.ball, INVENTORY_Y);
   await page.mouse.click(ball.x, ball.y);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('ball');
+});
+
+test('migrates old scoring and keeps needs cycling after one heart', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
+    hatched: true,
+    hearts: 8,
+    heartTarget: 9,
+    dinoCount: 3,
+    dinoCareCounts: [2, 1, 0],
+    dinoSpecies: ['triceratops', 'trex', 'brachiosaurus'],
+    unlockedSlots: 4,
+    lootClaimed: false,
+    cannonBoostReady: false,
+  })));
+  await page.reload();
+
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    hearts: 0,
+    heartTarget: 4,
+    newEggUnlocked: false,
+    need: 'hunger',
+    firstBubbleVisible: true,
+  });
+
+  await page.evaluate(() => window.__DINOLAND__?.fulfillActiveNeed(0));
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    hearts: 1,
+    heartTarget: 4,
+    newEggUnlocked: false,
+  });
+  await expect.poll(
+    () => page.evaluate(() => window.__DINOLAND__?.getState()),
+    { timeout: 4000 },
+  ).toMatchObject({ need: 'play', firstBubbleVisible: true });
 });
 
 test('allows unlimited copies and recalls landed items without changing inventory', async ({ page }) => {
@@ -199,6 +234,7 @@ test('a dino is attracted only to the item matching its need', async ({ page }) 
 
 test('cycles three dino species and personalities while preserving individual growth', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
+    scoringVersion: 2,
     hatched: true,
     hearts: 0,
     dinoCount: 3,
