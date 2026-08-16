@@ -46,6 +46,7 @@ declare global {
         secondDinoVisible: boolean;
         secondDinoAlpha: number;
         firstBubbleVisible: boolean;
+        firstBubbleItem: string | null;
         secondBubbleVisible: boolean;
         secondBubbleAlpha: number;
         secondBubbleX: number;
@@ -59,6 +60,7 @@ declare global {
         lootReady: boolean;
         lootVisible: boolean;
         cannonBoostReady: boolean;
+        heartTextures: string[];
         lootCelebrationVisible: boolean;
         lootX: number;
         lootY: number;

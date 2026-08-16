@@ -100,6 +100,8 @@ test('hatches into an immediate hunger need with both permanent inventory tools'
     riggedDinoCount: 1,
     need: 'hunger',
     firstBubbleVisible: true,
+    firstBubbleItem: 'apple',
+    heartTextures: ['heart-empty', 'heart-empty', 'heart-empty', 'heart-empty'],
     fieldItemCount: 0,
   });
   const hatchedType = (await page.evaluate(() => window.__DINOLAND__!.getState())).dinoTypes[0];
@@ -139,11 +141,12 @@ test('migrates old scoring and keeps needs cycling after one heart', async ({ pa
     hearts: 1,
     heartTarget: 4,
     newEggUnlocked: false,
+    heartTextures: ['heart', 'heart-empty', 'heart-empty', 'heart-empty'],
   });
   await expect.poll(
     () => page.evaluate(() => window.__DINOLAND__?.getState()),
     { timeout: 4000 },
-  ).toMatchObject({ need: 'play', firstBubbleVisible: true });
+  ).toMatchObject({ need: 'play', firstBubbleVisible: true, firstBubbleItem: 'ball' });
 });
 
 test('allows unlimited copies and recalls landed items without changing inventory', async ({ page }) => {
