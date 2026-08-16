@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#182127" />
+    <meta name="description" content="A standalone animation lab for Dinoland's baby Triceratops." />
+    <title>Triceratops Animation Lab</title>
+  </head>
+  <body>
+    <main class="lab-shell">
+      <header class="lab-header">
+        <div>
+          <p class="eyebrow">DINOLAND · CHARACTER LAB 001</p>
+          <h1>Baby Triceratops</h1>
+          <p class="intro">A layered character rig. Every moving piece can be refined before it enters the game.</p>
+        </div>
+        <nav class="lab-nav" aria-label="Animation studio navigation">
+          <a class="game-link" href="trex/">T-Rex lab</a>
+          <a class="game-link" href="brachiosaurus/">Brachiosaurus lab</a>
+          <a class="game-link" href="../">Back to game</a>
+        </nav>
+      </header>
+
+      <section class="workspace" aria-label="Triceratops animation workspace">
+        <div class="stage-card">
+          <div class="stage-toolbar">
+            <span><i class="status-dot"></i> LIVE RIG</span>
+            <button id="layers-toggle" class="quiet-button" type="button" aria-pressed="false">Show layers</button>
+          </div>
+
+          <div id="stage" class="stage" data-motion="idle" data-facing="right">
+            <div class="stage-grid" aria-hidden="true"></div>
+            <svg id="dino-stage" viewBox="0 0 900 560" role="img" aria-labelledby="dino-title dino-description">
+              <title id="dino-title">Animated baby Triceratops character</title>
+              <desc id="dino-description">A mint-green baby Triceratops assembled from independently moving vector layers.</desc>
+              <defs>
+                <linearGradient id="body-gradient" x1="0" y1="0" x2="0.75" y2="1">
+                  <stop offset="0" stop-color="#a9e7b8" />
+                  <stop offset="1" stop-color="#62b98c" />
+                </linearGradient>
+                <linearGradient id="belly-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#d8f3c9" />
+                  <stop offset="1" stop-color="#a7dca5" />
+                </linearGradient>
+                <linearGradient id="frill-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#f1b58c" />
+                  <stop offset="1" stop-color="#df7f78" />
+                </linearGradient>
+                <filter id="soft-shadow" x="-30%" y="-50%" width="160%" height="200%">
+                  <feGaussianBlur stdDeviation="9" />
+                </filter>
+              </defs>
+
+              <ellipse class="ground-shadow" cx="450" cy="438" rx="190" ry="28" fill="#0d171b" opacity="0.22" filter="url(#soft-shadow)" />
+
+              <g id="rig-position" transform="translate(450 340)">
+                <g id="rig-scale">
+                  <g id="rig-facing">
+                    <g id="rig-motion">
+                      <g class="layer layer-tail" data-layer="Tail">
+                        <g transform="translate(-145 -7)">
+                          <g class="motion-tail">
+                            <path d="M18 8 C-45 -6 -94 13 -132 45 C-92 33 -45 42 10 47 C42 50 59 21 18 8Z" fill="url(#body-gradient)" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M-111 42 C-83 31 -52 30 -20 35" fill="none" stroke="#d8f3c9" stroke-width="8" stroke-linecap="round" opacity="0.65" />
+                          </g>
+                        </g>
+                      </g>
+
+                      <g class="layer layer-rear-legs" data-layer="Rear legs">
+                        <g transform="translate(-72 58)">
+                          <g class="motion-leg motion-leg-back-left">
+                            <path d="M-29 -2 C-37 31 -34 73 -22 101 C-9 117 29 114 38 94 C31 68 25 34 29 3Z" fill="#559d7d" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M-24 99 C-7 89 20 91 35 101" fill="none" stroke="#20363a" stroke-width="7" stroke-linecap="round" />
+                          </g>
+                        </g>
+                        <g transform="translate(18 63)">
+                          <g class="motion-leg motion-leg-back-right">
+                            <path d="M-28 -4 C-34 29 -28 73 -18 103 C0 118 34 112 40 92 C31 64 28 31 28 0Z" fill="#69bc8f" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M-19 101 C-2 91 23 92 37 101" fill="none" stroke="#20363a" stroke-width="7" stroke-linecap="round" />
+                          </g>
+                        </g>
+                      </g>
+
+                      <g class="layer layer-body" data-layer="Body">
+                        <g class="motion-body">
+                          <path d="M-146 -40 C-116 -104 -20 -121 69 -85 C126 -62 150 -6 126 55 C101 113 1 127 -88 102 C-148 85 -174 20 -146 -40Z" fill="url(#body-gradient)" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                          <path d="M-99 42 C-54 83 31 92 92 56 C63 113 -26 126 -92 101 C-118 90 -134 69 -139 45Z" fill="url(#belly-gradient)" opacity="0.78" />
+                          <path d="M-85 -63 C-65 -76 -44 -82 -24 -84 M-44 -72 C-35 -55 -37 -41 -49 -28 M19 -81 C28 -62 25 -46 13 -34" fill="none" stroke="#4d9d77" stroke-width="8" stroke-linecap="round" opacity="0.7" />
+                          <circle cx="-106" cy="2" r="9" fill="#4d9d77" opacity="0.65" />
+                          <circle cx="-72" cy="-23" r="6" fill="#4d9d77" opacity="0.55" />
+                        </g>
+                      </g>
+
+                      <g class="layer layer-front-legs" data-layer="Front legs">
+                        <g transform="translate(54 63)">
+                          <g class="motion-leg motion-leg-front-left">
+                            <path d="M-24 -5 C-27 28 -23 70 -14 101 C3 117 34 112 40 94 C31 64 29 28 25 -3Z" fill="#78c99a" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M-15 100 C2 91 24 93 37 101" fill="none" stroke="#20363a" stroke-width="7" stroke-linecap="round" />
+                          </g>
+                        </g>
+                        <g transform="translate(111 50)">
+                          <g class="motion-leg motion-leg-front-right">
+                            <path d="M-22 -4 C-25 31 -20 72 -9 99 C8 113 39 107 43 88 C33 61 29 28 25 -2Z" fill="#8bd6a6" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M-10 98 C7 89 29 90 41 98" fill="none" stroke="#20363a" stroke-width="7" stroke-linecap="round" />
+                          </g>
+                        </g>
+                      </g>
+
+                      <g class="layer layer-head" data-layer="Head">
+                        <g transform="translate(121 -77)">
+                          <g class="motion-head">
+                          <path d="M-55 -88 C-4 -135 78 -113 99 -48 C111 -12 93 30 58 45 C22 62 -34 47 -55 12 C-76 -24 -77 -67 -55 -88Z" fill="url(#frill-gradient)" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                          <circle cx="-38" cy="-70" r="8" fill="#f6d7b8" opacity="0.8" />
+                          <circle cx="73" cy="-53" r="8" fill="#f6d7b8" opacity="0.8" />
+                          <circle cx="-53" cy="-17" r="7" fill="#f6d7b8" opacity="0.8" />
+                          <path d="M-21 -59 C20 -82 75 -62 87 -17 C99 27 66 77 18 82 C-28 87 -61 55 -58 16 C-55 -16 -43 -44 -21 -59Z" fill="url(#body-gradient)" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+
+                          <path d="M8 -59 C5 -100 18 -128 33 -146 C50 -115 50 -84 39 -55Z" fill="#f5e5b8" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                          <path d="M56 -43 C75 -69 97 -79 118 -79 C111 -51 93 -31 68 -23Z" fill="#f5e5b8" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                          <path d="M-24 -45 C-39 -70 -57 -82 -77 -84 C-73 -57 -56 -36 -34 -28Z" fill="#f5e5b8" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+
+                          <g class="motion-eye layer layer-eye" data-layer="Eyes">
+                            <ellipse cx="8" cy="-12" rx="17" ry="20" fill="#fffaf0" stroke="#20363a" stroke-width="7" />
+                            <circle cx="13" cy="-8" r="8" fill="#20363a" />
+                            <circle cx="16" cy="-12" r="3" fill="#ffffff" />
+                          </g>
+                          <path d="M55 17 C70 23 79 34 78 49 C63 41 49 39 34 43Z" fill="#dff1c6" stroke="#20363a" stroke-width="7" stroke-linejoin="round" />
+                          <ellipse cx="55" cy="21" rx="5" ry="4" fill="#20363a" />
+                          <g class="motion-jaw">
+                            <path d="M-15 45 C12 62 45 62 72 48 C61 78 13 92 -18 67Z" fill="#73c394" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M11 63 C27 72 43 70 55 61" fill="none" stroke="#dff1c6" stroke-width="5" stroke-linecap="round" />
+                          </g>
+                            <circle cx="-20" cy="24" r="9" fill="#ef8b84" opacity="0.45" />
+                          </g>
+                        </g>
+                      </g>
+                    </g>
+                  </g>
+                </g>
+              </g>
+            </svg>
+
+            <div id="layer-labels" class="layer-labels" aria-hidden="true">
+              <span style="--x: 25%; --y: 49%">TAIL</span>
+              <span style="--x: 45%; --y: 41%">BODY</span>
+              <span style="--x: 66%; --y: 30%">HEAD</span>
+              <span style="--x: 48%; --y: 70%">LEGS</span>
+            </div>
+            <p id="motion-caption" class="motion-caption">IDLE · BREATHING, HEAD DRIFT, BLINK</p>
+          </div>
+        </div>
+
+        <aside class="control-panel" aria-label="Animation controls">
+          <section>
+            <p class="panel-label">ANIMATION</p>
+            <div class="motion-grid" role="group" aria-label="Choose animation">
+              <button class="motion-button active" type="button" data-motion="idle"><span>01</span>Idle</button>
+              <button class="motion-button" type="button" data-motion="walk"><span>02</span>Walk</button>
+              <button class="motion-button" type="button" data-motion="happy"><span>03</span>Happy</button>
+              <button class="motion-button" type="button" data-motion="eat"><span>04</span>Eat</button>
+              <button class="motion-button wide" type="button" data-motion="impact"><span>05</span>Cannon impact</button>
+            </div>
+          </section>
+
+          <section class="slider-section">
+            <label for="growth"><span>GAME SCALE</span><output id="growth-value">60%</output></label>
+            <input id="growth" type="range" min="42" max="78" value="60" step="1" />
+            <div class="range-ends"><span>NEWBORN</span><span>GROWN</span></div>
+          </section>
+
+          <section class="slider-section">
+            <label for="speed"><span>SPEED</span><output id="speed-value">1.0×</output></label>
+            <input id="speed" type="range" min="50" max="160" value="100" step="5" />
+            <div class="range-ends"><span>SLOW</span><span>FAST</span></div>
+          </section>
+
+          <section>
+            <p class="panel-label">DIRECTION</p>
+            <div class="direction-buttons" role="group" aria-label="Character direction">
+              <button class="direction-button" type="button" data-facing="left">← Left</button>
+              <button class="direction-button active" type="button" data-facing="right">Right →</button>
+            </div>
+          </section>
+
+          <section class="rig-readout">
+            <div><span>RIG</span><strong>6 layers</strong></div>
+            <div><span>FORMAT</span><strong>SVG vector</strong></div>
+            <div><span>STATUS</span><strong class="ready">Ready to refine</strong></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/lab/main.ts"></script>
+  </body>
+</html>

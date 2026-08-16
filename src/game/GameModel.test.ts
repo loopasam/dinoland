@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GameModel,
+  growthScaleForCareCount,
   heartTargetForDinoCount,
   INITIAL_HEART_TARGET,
   loadProgress,
@@ -28,6 +29,13 @@ describe('GameModel', () => {
     expect(model.hearts).toBe(2);
   });
 
+  it('never replaces an active need when a delayed request arrives', () => {
+    const model = new GameModel({ hatched: true });
+    expect(model.requestNeed(0, 'play')).toBe('play');
+    expect(model.requestNeed(0)).toBe('play');
+    expect(model.needFor(0)).toBe('play');
+  });
+
   it('drops one loot reward halfway through a round', () => {
     const model = new GameModel({ hatched: true });
     fulfillNextNeed(model);
@@ -35,11 +43,50 @@ describe('GameModel', () => {
     fulfillNextNeed(model);
     expect(model.lootReady).toBe(true);
 
-    expect(model.collectLoot()).toBe(true);
-    expect(model.collectLoot()).toBe(false);
+    expect(model.collectLoot()).toEqual({ unlockedSlot: 3 });
+    expect(model.collectLoot()).toBeUndefined();
+    expect(model.unlockedSlots).toBe(3);
     expect(model.cannonBoostReady).toBe(true);
     expect(model.useCannonBoost()).toBe(true);
     expect(model.useCannonBoost()).toBe(false);
+  });
+
+  it('cycles through every item type that has been unlocked', () => {
+    const model = new GameModel({ hatched: true, dinoCount: 2, unlockedSlots: 5 });
+    for (const expected of ['hunger', 'play', 'thirst', 'music', 'affection'] as const) {
+      expect(model.requestNeed(0)).toBe(expected);
+      expect(model.fulfillNeed(0, expected)).toBe(true);
+    }
+    expect(model.careCountFor(0)).toBe(5);
+    expect(growthScaleForCareCount(model.careCountFor(0))).toBeGreaterThan(growthScaleForCareCount(0));
+  });
+
+  it('grows each dino independently and caps its visual size', () => {
+    const model = new GameModel({ hatched: true, dinoCount: 2, dinoCareCounts: [3, 20] });
+
+    expect(model.careCountFor(0)).toBe(3);
+    expect(model.careCountFor(1)).toBe(20);
+    expect(growthScaleForCareCount(0)).toBe(0.42);
+    expect(growthScaleForCareCount(3)).toBeCloseTo(0.54);
+    expect(growthScaleForCareCount(20)).toBe(0.78);
+  });
+
+  it('randomly assigns a species once and preserves it in the save', () => {
+    const samples = [0.05, 0.45, 0.95];
+    const model = new GameModel({ hatched: true, dinoCount: 3 }, () => samples.shift() ?? 0);
+
+    expect([model.speciesFor(0), model.speciesFor(1), model.speciesFor(2)]).toEqual([
+      'triceratops',
+      'trex',
+      'brachiosaurus',
+    ]);
+
+    const restored = new GameModel(model.serialize(), () => 0);
+    expect([restored.speciesFor(0), restored.speciesFor(1), restored.speciesFor(2)]).toEqual([
+      'triceratops',
+      'trex',
+      'brachiosaurus',
+    ]);
   });
 
   it('keeps reward eggs scalable and starts a fresh loot round', () => {
@@ -69,6 +116,9 @@ describe('GameModel', () => {
       hearts: 0,
       heartTarget: 6,
       dinoCount: 2,
+      dinoCareCounts: [0, 0],
+      dinoSpecies: [],
+      unlockedSlots: 2,
       lootClaimed: false,
       cannonBoostReady: false,
     });
@@ -77,6 +127,9 @@ describe('GameModel', () => {
       hearts: 0,
       heartTarget: 4,
       dinoCount: 0,
+      dinoCareCounts: [],
+      dinoSpecies: [],
+      unlockedSlots: 2,
       lootClaimed: false,
       cannonBoostReady: false,
     });
@@ -95,6 +148,9 @@ describe('GameModel', () => {
       hearts: 0,
       heartTarget: 4,
       dinoCount: 0,
+      dinoCareCounts: [],
+      dinoSpecies: [],
+      unlockedSlots: 2,
       lootClaimed: false,
       cannonBoostReady: false,
     });

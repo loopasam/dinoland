@@ -1,4 +1,5 @@
 import type { DinoNeed, PlayMode } from '../game/GameModel';
+import type { DinoPersonality, DinoSpecies } from '../game/DinoSpecies';
 
 declare global {
   interface Window {
@@ -13,7 +14,7 @@ declare global {
         hearts: number;
         heartTarget: number;
         scoreText: string;
-        cannonLoaded: 'apple' | 'ball' | null;
+        cannonLoaded: 'apple' | 'ball' | 'water' | 'music' | 'heart' | null;
         cannonPower: number;
         lastCannonPower: number;
         lastCannonSpeed: number;
@@ -32,6 +33,12 @@ declare global {
         cannonDinoCollisions: number;
         firstCannonDistance: number;
         dinoCount: number;
+        dinoTypes: DinoSpecies[];
+        dinoPersonalities: DinoPersonality[];
+        riggedDinoCount: number;
+        firstDinoMotion: 'idle' | 'walk' | 'happy' | 'eat' | 'impact' | null;
+        dinoScales: number[];
+        dinoCareCounts: number[];
         newEggUnlocked: boolean;
         secondEggVisible: boolean;
         secondEggTaps: number;
@@ -47,10 +54,12 @@ declare global {
         firstBubbleX: number;
         firstBubbleY: number;
         fieldItemCount: number;
-        fieldItems: Array<{ type: 'apple' | 'ball' | null; x: number; y: number }>;
+        fieldItems: Array<{ type: 'apple' | 'ball' | 'water' | 'music' | 'heart' | null; x: number; y: number }>;
+        unlockedSlots: number;
         lootReady: boolean;
         lootVisible: boolean;
         cannonBoostReady: boolean;
+        lootCelebrationVisible: boolean;
         lootX: number;
         lootY: number;
         eggX: number;

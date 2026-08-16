@@ -1,7 +1,9 @@
 import { expect, Page, test } from '@playwright/test';
 
 type GamePoint = { x: number; y: number };
-type ItemName = 'apple' | 'ball';
+type ItemName = 'apple' | 'ball' | 'water' | 'music' | 'heart';
+const INVENTORY_X: Record<ItemName, number> = { apple: 44, ball: 103, water: 162, music: 221, heart: 280 };
+const INVENTORY_Y = 675;
 
 async function canvasControls(page: Page) {
   const box = await page.locator('canvas').boundingBox();
@@ -36,7 +38,7 @@ async function launchItem(
   target: GamePoint,
   requestedPower = 0.3,
 ): Promise<void> {
-  const inventory = point(item === 'apple' ? 95 : 205, 642);
+  const inventory = point(INVENTORY_X[item], INVENTORY_Y);
   await page.mouse.click(inventory.x, inventory.y);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe(item);
 
@@ -46,7 +48,7 @@ async function launchItem(
     y: 348 + Math.sin(state.cannonAngle) * 45,
   }, target);
 
-  const fire = point(720, 650);
+  const fire = point(700, 675);
   await page.mouse.move(fire.x, fire.y);
   await page.mouse.down();
   await page.waitForTimeout(Math.max(220, Math.min(1, requestedPower) * 1700));
@@ -64,6 +66,9 @@ async function loadField(page: Page, hearts = 0): Promise<void> {
     hearts: savedHearts,
     heartTarget: 4,
     dinoCount: 1,
+    dinoCareCounts: [0],
+    dinoSpecies: ['triceratops'],
+    unlockedSlots: 2,
     lootClaimed: false,
     cannonBoostReady: false,
   })), { savedHearts: hearts });
@@ -91,14 +96,17 @@ test('hatches into an immediate hunger need with both permanent inventory tools'
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     mode: 'field',
     dinoCount: 1,
+    riggedDinoCount: 1,
     need: 'hunger',
     firstBubbleVisible: true,
     fieldItemCount: 0,
   });
-  const apple = point(95, 642);
+  const hatchedType = (await page.evaluate(() => window.__DINOLAND__!.getState())).dinoTypes[0];
+  expect(['triceratops', 'trex', 'brachiosaurus']).toContain(hatchedType);
+  const apple = point(INVENTORY_X.apple, INVENTORY_Y);
   await page.mouse.click(apple.x, apple.y);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('apple');
-  const ball = point(205, 642);
+  const ball = point(INVENTORY_X.ball, INVENTORY_Y);
   await page.mouse.click(ball.x, ball.y);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('ball');
 });
@@ -121,9 +129,10 @@ test('allows unlimited copies and recalls landed items without changing inventor
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().fieldItemCount)).toBe(2);
 
   await page.reload();
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('field');
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
   expect(state.fieldItemCount).toBe(0);
-  const apple = point(95, 642);
+  const apple = point(INVENTORY_X.apple, INVENTORY_Y);
   await page.mouse.click(apple.x, apple.y);
   expect(await page.evaluate(() => window.__DINOLAND__!.getState().cannonLoaded)).toBe('apple');
 });
@@ -188,6 +197,39 @@ test('a dino is attracted only to the item matching its need', async ({ page }) 
   expect((await page.evaluate(() => window.__DINOLAND__!.getState())).fieldItems[0].type).toBe('apple');
 });
 
+test('cycles three dino species and personalities while preserving individual growth', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
+    hatched: true,
+    hearts: 0,
+    dinoCount: 3,
+    dinoCareCounts: [0, 4, 20],
+    dinoSpecies: ['triceratops', 'trex', 'brachiosaurus'],
+    unlockedSlots: 5,
+    lootClaimed: false,
+    cannonBoostReady: false,
+  })));
+  await page.reload();
+
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    dinoTypes: ['triceratops', 'trex', 'brachiosaurus'],
+    dinoPersonalities: ['eager', 'steady', 'sleepy'],
+    riggedDinoCount: 3,
+    dinoCareCounts: [0, 4, 20],
+    dinoScales: [0.42, 0.58, 0.78],
+  });
+
+  await page.evaluate(() => {
+    const game = window.__DINOLAND__;
+    game?.pauseDino(0);
+    game?.forceNeed(0, 'hunger');
+    game?.fulfillActiveNeed(0);
+  });
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    dinoCareCounts: [1, 4, 20],
+    dinoScales: [0.46, 0.58, 0.78],
+  });
+});
+
 test('loot drops halfway and grants exactly one boosted shot', async ({ page }) => {
   test.setTimeout(60_000);
   await loadField(page);
@@ -211,7 +253,14 @@ test('loot drops halfway and grants exactly one boosted shot', async ({ page }) 
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     lootVisible: false,
     cannonBoostReady: true,
+    lootCelebrationVisible: true,
+    unlockedSlots: 3,
   });
+
+  await page.waitForTimeout(1600);
+  const water = point(INVENTORY_X.water, INVENTORY_Y);
+  await page.mouse.click(water.x, water.y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('water');
 
   await launchItem(page, point, drag, 'ball', { x: 1040, y: 250 }, 0.25);
   const state = await page.evaluate(() => window.__DINOLAND__!.getState());
@@ -233,7 +282,7 @@ test('keeps billiards physics and reset clears progression without limiting inve
   await waitForPhysicsToSettle(page);
 
   const { point } = await canvasControls(page);
-  const reset = point(1202, 60);
+  const reset = point(1228, 35);
   await page.mouse.click(reset.x, reset.y);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     mode: 'egg',

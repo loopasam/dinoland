@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#182127" />
+    <meta name="description" content="A standalone animation lab for Dinoland's baby Brachiosaurus." />
+    <title>Brachiosaurus Animation Lab</title>
+  </head>
+  <body>
+    <main class="lab-shell">
+      <header class="lab-header">
+        <div>
+          <p class="eyebrow">DINOLAND · CHARACTER LAB 003</p>
+          <h1>Baby Brachiosaurus</h1>
+          <p class="intro">A tall seven-layer rig built around a soft, expressive neck and heavy four-footed walk.</p>
+        </div>
+        <nav class="lab-nav" aria-label="Animation studio navigation">
+          <a class="game-link" href="../">Triceratops lab</a>
+          <a class="game-link" href="../trex/">T-Rex lab</a>
+          <a class="game-link" href="../../">Back to game</a>
+        </nav>
+      </header>
+
+      <section class="workspace" aria-label="Brachiosaurus animation workspace">
+        <div class="stage-card">
+          <div class="stage-toolbar">
+            <span><i class="status-dot"></i> LIVE RIG</span>
+            <button id="layers-toggle" class="quiet-button" type="button" aria-pressed="false">Show layers</button>
+          </div>
+
+          <div id="stage" class="stage brachio-stage" data-motion="idle" data-facing="right">
+            <div class="stage-grid" aria-hidden="true"></div>
+            <svg id="dino-stage" viewBox="0 0 900 600" role="img" aria-labelledby="dino-title dino-description">
+              <title id="dino-title">Animated baby Brachiosaurus character</title>
+              <desc id="dino-description">A blue-green baby Brachiosaurus assembled from seven independently moving vector layers.</desc>
+              <defs>
+                <linearGradient id="brachio-body-gradient" x1="0" y1="0" x2="0.8" y2="1">
+                  <stop offset="0" stop-color="#8bd9ca" />
+                  <stop offset="1" stop-color="#5792ad" />
+                </linearGradient>
+                <linearGradient id="brachio-belly-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#d5edc9" />
+                  <stop offset="1" stop-color="#9bd0bd" />
+                </linearGradient>
+                <linearGradient id="brachio-head-gradient" x1="0" y1="0" x2="0.7" y2="1">
+                  <stop offset="0" stop-color="#a5e3ce" />
+                  <stop offset="1" stop-color="#68a8bd" />
+                </linearGradient>
+                <filter id="brachio-soft-shadow" x="-30%" y="-50%" width="160%" height="200%">
+                  <feGaussianBlur stdDeviation="9" />
+                </filter>
+              </defs>
+
+              <ellipse class="ground-shadow" cx="450" cy="492" rx="205" ry="27" fill="#0d171b" opacity="0.22" filter="url(#brachio-soft-shadow)" />
+
+              <g id="rig-position" transform="translate(450 335)">
+                <g id="rig-scale">
+                  <g id="rig-facing">
+                    <g id="rig-motion">
+                      <g class="layer layer-tail" data-layer="Tail">
+                        <g transform="translate(-118 -34)">
+                          <g class="motion-tail">
+                            <path d="M27 10 C-43 -15 -125 -6 -220 48 C-151 35 -89 42 -18 68 C21 82 57 34 27 10Z" fill="url(#brachio-body-gradient)" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                            <path d="M-178 43 C-124 29 -72 36 -24 54" fill="none" stroke="#c9ebcc" stroke-width="8" stroke-linecap="round" opacity="0.58" />
+                            <circle cx="-83" cy="30" r="9" fill="#7769a7" opacity="0.72" />
+                          </g>
+                        </g>
+                      </g>
+
+                      <g class="layer layer-rear-legs" data-layer="Rear legs">
+                        <g transform="translate(-77 52)">
+                          <g class="motion-leg motion-leg-back-left">
+                            <path d="M-31 -6 C-41 39 -40 91 -27 138 C-7 154 25 151 39 134 C28 89 28 39 31 -2Z" fill="#4f819f" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                            <path d="M-27 136 C-5 125 23 126 44 137 C24 150 -8 153 -27 136Z" fill="#628fac" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M3 137 L13 146 M23 135 L33 143" fill="none" stroke="#eaf1cf" stroke-width="6" stroke-linecap="round" />
+                          </g>
+                        </g>
+                        <g transform="translate(-15 55)">
+                          <g class="motion-leg motion-leg-back-right">
+                            <path d="M-29 -6 C-38 39 -36 91 -23 138 C-2 154 30 150 43 132 C31 87 31 38 32 -2Z" fill="#67a7b8" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                            <path d="M-23 136 C1 124 29 125 49 136 C30 150 -4 153 -23 136Z" fill="#77b4c1" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M8 136 L18 145 M29 134 L39 142" fill="none" stroke="#eaf1cf" stroke-width="6" stroke-linecap="round" />
+                          </g>
+                        </g>
+                      </g>
+
+                      <g class="layer layer-body" data-layer="Body">
+                        <g class="motion-body">
+                          <path d="M-145 -59 C-93 -113 13 -119 94 -76 C139 -52 158 5 135 60 C111 119 13 137 -82 108 C-146 89 -181 0 -145 -59Z" fill="url(#brachio-body-gradient)" stroke="#20363a" stroke-width="10" stroke-linejoin="round" />
+                          <path d="M-107 48 C-56 92 36 101 106 62 C73 122 -22 140 -91 108 C-119 95 -139 73 -146 48Z" fill="url(#brachio-belly-gradient)" opacity="0.78" />
+                          <path d="M-86 -76 C-68 -58 -49 -55 -30 -68 M11 -91 C30 -70 49 -66 68 -78" fill="none" stroke="#7769a7" stroke-width="12" stroke-linecap="round" opacity="0.85" />
+                          <circle cx="-104" cy="4" r="10" fill="#7769a7" opacity="0.7" />
+                          <circle cx="-64" cy="-26" r="6" fill="#7769a7" opacity="0.62" />
+                        </g>
+                      </g>
+
+                      <g class="layer layer-front-legs" data-layer="Front legs">
+                        <g transform="translate(61 29)">
+                          <g class="motion-leg motion-leg-front-left">
+                            <path d="M-33 -4 C-40 42 -37 101 -23 153 C-1 169 34 163 45 142 C32 94 31 40 30 0Z" fill="#65a7b5" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                            <path d="M-23 151 C3 138 33 138 54 150 C33 165 -4 168 -23 151Z" fill="#77b9c0" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M11 151 L21 160 M33 148 L43 157" fill="none" stroke="#eaf1cf" stroke-width="6" stroke-linecap="round" />
+                          </g>
+                        </g>
+                        <g transform="translate(111 22)">
+                          <g class="motion-leg motion-leg-front-right">
+                            <path d="M-31 -4 C-38 44 -34 105 -18 156 C5 171 39 163 50 141 C36 92 33 39 31 0Z" fill="#7bc2c2" stroke="#20363a" stroke-width="9" stroke-linejoin="round" />
+                            <path d="M-18 154 C7 140 39 139 60 151 C39 166 2 170 -18 154Z" fill="#8dceca" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <path d="M17 153 L27 162 M40 150 L50 159" fill="none" stroke="#eaf1cf" stroke-width="6" stroke-linecap="round" />
+                          </g>
+                        </g>
+                      </g>
+
+                      <g class="layer layer-head" data-layer="Head and neck">
+                        <g transform="translate(79 -21)">
+                          <g class="motion-head">
+                            <path d="M-30 31 C-8 -35 2 -111 -6 -178 C-11 -217 6 -239 30 -226 C58 -210 62 -166 55 -105 L49 -31 C46 9 25 38 -30 31Z" fill="url(#brachio-body-gradient)" stroke="#20363a" stroke-width="10" stroke-linejoin="round" />
+                            <path d="M-9 19 C12 -43 21 -111 15 -171 C12 -195 22 -208 33 -201 C45 -176 43 -133 38 -93 L32 -26 C29 0 15 20 -9 19Z" fill="url(#brachio-belly-gradient)" opacity="0.72" />
+                            <path d="M3 -95 C17 -81 32 -78 45 -88 M-1 -143 C12 -130 27 -128 40 -138" fill="none" stroke="#7769a7" stroke-width="10" stroke-linecap="round" opacity="0.78" />
+
+                            <path d="M5 -229 C27 -265 83 -277 119 -251 C147 -232 142 -194 111 -178 C77 -162 22 -174 4 -199 C-4 -210 -4 -219 5 -229Z" fill="url(#brachio-head-gradient)" stroke="#20363a" stroke-width="10" stroke-linejoin="round" />
+                            <path d="M67 -230 C92 -229 118 -219 133 -203 C116 -190 91 -187 64 -195Z" fill="#8dcabd" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                            <ellipse cx="82" cy="-220" rx="4" ry="3" fill="#20363a" />
+                            <path d="M26 -251 C22 -272 29 -287 39 -298 C51 -280 52 -262 47 -246 M72 -264 C74 -284 84 -296 96 -303 C102 -282 97 -266 90 -254" fill="#7769a7" stroke="#20363a" stroke-width="7" stroke-linejoin="round" />
+                            <circle cx="26" cy="-195" r="10" fill="#e98591" opacity="0.48" />
+
+                            <g class="motion-eye layer layer-eye" data-layer="Eyes">
+                              <ellipse cx="46" cy="-224" rx="17" ry="20" fill="#fffaf0" stroke="#20363a" stroke-width="7" />
+                              <circle cx="52" cy="-220" r="8" fill="#20363a" />
+                              <circle cx="55" cy="-225" r="3" fill="#ffffff" />
+                            </g>
+
+                            <g class="motion-jaw layer layer-jaw" data-layer="Jaw">
+                              <path d="M18 -196 C48 -181 94 -179 127 -201 C120 -170 83 -153 44 -160 C22 -164 11 -180 18 -196Z" fill="#5d9eb2" stroke="#20363a" stroke-width="8" stroke-linejoin="round" />
+                              <path d="M46 -174 C66 -164 90 -166 105 -177" fill="none" stroke="#d8edcf" stroke-width="6" stroke-linecap="round" />
+                            </g>
+                          </g>
+                        </g>
+                      </g>
+                    </g>
+                  </g>
+                </g>
+              </g>
+            </svg>
+
+            <div id="layer-labels" class="layer-labels" aria-hidden="true">
+              <span style="--x: 18%; --y: 51%">TAIL</span>
+              <span style="--x: 44%; --y: 48%">BODY</span>
+              <span style="--x: 61%; --y: 22%">HEAD + NECK</span>
+              <span style="--x: 45%; --y: 74%">REAR LEGS</span>
+              <span style="--x: 60%; --y: 72%">FRONT LEGS</span>
+            </div>
+            <p id="motion-caption" class="motion-caption">IDLE · BREATHING, HEAD DRIFT, BLINK</p>
+          </div>
+        </div>
+
+        <aside class="control-panel" aria-label="Animation controls">
+          <section>
+            <p class="panel-label">ANIMATION</p>
+            <div class="motion-grid" role="group" aria-label="Choose animation">
+              <button class="motion-button active" type="button" data-motion="idle"><span>01</span>Idle</button>
+              <button class="motion-button" type="button" data-motion="walk"><span>02</span>Walk</button>
+              <button class="motion-button" type="button" data-motion="happy"><span>03</span>Happy</button>
+              <button class="motion-button" type="button" data-motion="eat"><span>04</span>Eat</button>
+              <button class="motion-button wide" type="button" data-motion="impact"><span>05</span>Cannon impact</button>
+            </div>
+          </section>
+
+          <section class="slider-section">
+            <label for="growth"><span>GAME SCALE</span><output id="growth-value">60%</output></label>
+            <input id="growth" type="range" min="42" max="78" value="60" step="1" />
+            <div class="range-ends"><span>NEWBORN</span><span>GROWN</span></div>
+          </section>
+
+          <section class="slider-section">
+            <label for="speed"><span>SPEED</span><output id="speed-value">1.0×</output></label>
+            <input id="speed" type="range" min="50" max="160" value="100" step="5" />
+            <div class="range-ends"><span>SLOW</span><span>FAST</span></div>
+          </section>
+
+          <section>
+            <p class="panel-label">DIRECTION</p>
+            <div class="direction-buttons" role="group" aria-label="Character direction">
+              <button class="direction-button" type="button" data-facing="left">← Left</button>
+              <button class="direction-button active" type="button" data-facing="right">Right →</button>
+            </div>
+          </section>
+
+          <section class="rig-readout">
+            <div><span>RIG</span><strong>7 layers</strong></div>
+            <div><span>FORMAT</span><strong>SVG vector</strong></div>
+            <div><span>STATUS</span><strong class="ready">Ready to refine</strong></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/lab/main.ts"></script>
+  </body>
+</html>
