@@ -29,7 +29,9 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+        timeout-minutes: 2
+        run: npx playwright install chromium
       - name: Run browser tests
         continue-on-error: true
         run: npm run test:e2e
