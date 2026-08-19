@@ -1,5 +1,5 @@
 # Runtime assets
 
-The prototype currently ships no raster game art. The field, dinosaurs, eggs, ball, drink container, two foods, speaker, inventory, controls, need bubbles, and collision boundaries are generated from simple Phaser geometry in `src/scenes/NurseryScene.ts`.
+The prototype currently ships no raster game art. The field, dinosaur rigs, eggs, care items, gift, flower launcher, inventory, controls, need bubbles, and progress hearts are drawn at runtime with Phaser geometry.
 
-This is intentional: the visual layer stays transparent while the reusable N-dinosaur interaction, collision, scoring, and hatching systems are validated. Final art can later replace the generated texture keys without changing those mechanics.
+This keeps the visual layer crisp, lightweight, and easy to iterate. Raster art can later replace individual generated texture keys without changing interactions, collisions, scoring, or hatching.

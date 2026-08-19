@@ -1,10 +1,10 @@
-# Dinoland placeholder visual guide
+# Dinoland visual guide
 
-> Status: final art is intentionally deferred. The live prototype uses code-generated geometry and visible collision bounds so playtesting can focus on mechanics.
+> Status: the prototype now has a cohesive code-drawn art layer. It remains lightweight and easy to iterate without changing game mechanics.
 
 ## Direction
 
-The current implementation uses a flat debug field, a visible grid, colored dinosaur boxes, egg ellipses, a ball circle, a blue drink container, two geometric foods, and a speaker with a visible proximity radius. Each physical collider is outlined onscreen. These placeholders retain the intended fixed three-quarter top-down game layout without implying that the art direction is final.
+The current implementation uses a sunny fenced meadow, animated baby dinosaurs, a magic flower launcher, illustrated care items, decorated eggs, gift boxes, heart progress, and warm wooden inventory controls. Need bubbles reuse the exact item illustrations from the inventory so every request is immediately recognizable.
 
 ## Palette
 
@@ -34,9 +34,9 @@ The baby triceratops has an oversized head and frill, short sturdy legs, three c
 
 - Logical game canvas: `1280 × 720`
 - Background export: landscape, cropped to `1280 × 720`
-- Character/object sources: square images, then transparent PNG cutouts
-- Keep generated source files out of runtime assets; commit only optimized final assets
+- Character rigs and object textures are generated in Phaser and remain independent from collision geometry
+- Keep interactive silhouettes simple and recognizable at inventory, bubble, and field scales
 
-## Future art pass
+## Next art pass
 
-The palette and character notes below are retained as possible future direction, not as requirements for the current mechanics prototype. Runtime textures should only be reintroduced after the click, drag, collision, need, scoring, and repeated hatching loops are validated.
+Future passes can add restrained texture and bespoke sound-reactive effects, but should preserve these silhouettes, palette roles, and shared texture keys.

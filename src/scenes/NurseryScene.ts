@@ -174,7 +174,7 @@ export class NurseryScene extends Phaser.Scene {
     this.boostPulse = undefined;
     this.boostOrbitTween = undefined;
     this.lootAnnouncement = undefined;
-    this.createPlaceholderTextures();
+    this.createGameTextures();
     this.createMap();
     this.createCannon();
     this.createItemTray();
@@ -383,9 +383,36 @@ export class NurseryScene extends Phaser.Scene {
     };
   }
 
-  private createPlaceholderTextures(): void {
+  private createGameTextures(): void {
     if (this.textures.exists('dino')) return;
     const graphics = this.make.graphics({ x: 0, y: 0 });
+    const ink = 0x2f453f;
+    const deepInk = 0x20332e;
+    const cream = 0xfff2cf;
+    const highlight = 0xfff9e8;
+    const peach = 0xee8f79;
+    const rose = 0xec7188;
+    const leaf = 0x74ad68;
+    const deepLeaf = 0x44785a;
+    const sky = 0x72cad7;
+    const honey = 0xe0a65e;
+    const purple = 0xa77ac7;
+
+    const drawObjectShadow = (x = 30, y = 53, width = 44): void => {
+      graphics.fillStyle(deepInk, 0.18).fillEllipse(x, y, width, 10);
+    };
+
+    const drawHeart = (x: number, y: number, scale: number, fill: number, stroke: number): void => {
+      const points = Array.from({ length: 72 }, (_, index) => {
+        const angle = (index / 72) * Math.PI * 2;
+        return new Phaser.Math.Vector2(
+          x + Math.pow(Math.sin(angle), 3) * 21 * scale,
+          y - (14 * Math.cos(angle) - 5 * Math.cos(angle * 2) - 2 * Math.cos(angle * 3) - Math.cos(angle * 4)) * scale,
+        );
+      });
+      graphics.fillStyle(fill, 1).fillPoints(points, true);
+      graphics.lineStyle(3.5 * scale, stroke, 1).strokePoints(points, true);
+    };
 
     graphics.fillStyle(0xffffff, 1).fillRect(4, 4, 72, 72);
     graphics.lineStyle(5, 0x182027, 1).strokeRect(4, 4, 72, 72);
@@ -397,99 +424,113 @@ export class NurseryScene extends Phaser.Scene {
     graphics.generateTexture('dino-hitbox', 110, 110);
     graphics.clear();
 
-    graphics.fillStyle(0xe3aa55, 1).fillEllipse(40, 52, 72, 96);
-    graphics.lineStyle(5, 0x182027, 1).strokeEllipse(40, 52, 72, 96);
-    graphics.lineStyle(2, 0x182027, 0.55).lineBetween(40, 7, 40, 97);
+    graphics.fillStyle(deepInk, 0.2).fillEllipse(40, 96, 62, 12);
+    graphics.fillStyle(0xd99c73, 1).fillEllipse(42, 54, 68, 94);
+    graphics.fillStyle(cream, 1).fillEllipse(39, 50, 68, 94);
+    graphics.lineStyle(5, ink, 1).strokeEllipse(39, 50, 68, 94);
+    graphics.fillStyle(peach, 0.95)
+      .fillEllipse(24, 37, 20, 25)
+      .fillEllipse(52, 63, 23, 19)
+      .fillEllipse(28, 76, 14, 11);
+    graphics.lineStyle(3, ink, 0.72)
+      .strokeEllipse(24, 37, 20, 25)
+      .strokeEllipse(52, 63, 23, 19)
+      .strokeEllipse(28, 76, 14, 11);
+    graphics.fillStyle(highlight, 0.95).fillEllipse(27, 23, 12, 23);
+    graphics.fillStyle(0xffffff, 0.62).fillCircle(51, 30, 4);
     graphics.generateTexture('egg', 80, 104);
     graphics.clear();
 
-    graphics.fillStyle(0xa94455, 1).fillEllipse(33, 38, 42, 38);
-    graphics.fillStyle(0xe96e7f, 1)
-      .fillEllipse(23, 30, 29, 33)
-      .fillEllipse(37, 30, 29, 33)
-      .fillEllipse(30, 39, 42, 35);
-    graphics.lineStyle(4, 0x243039, 1).strokeEllipse(30, 35, 45, 45);
-    graphics.lineStyle(5, 0x4f4131, 1).lineBetween(30, 14, 34, 5);
-    graphics.fillStyle(0x75b968, 1).fillEllipse(42, 10, 20, 11);
-    graphics.lineStyle(3, 0x243039, 1).strokeEllipse(42, 10, 20, 11);
-    graphics.fillStyle(0xffb2ba, 0.9).fillEllipse(20, 28, 7, 12);
+    drawObjectShadow();
+    graphics.fillStyle(0xb94f5f, 1).fillCircle(31, 34, 22);
+    graphics.fillStyle(rose, 1).fillCircle(29, 31, 22);
+    graphics.lineStyle(4, ink, 1).strokeCircle(29, 31, 22);
+    graphics.fillStyle(0xffa2ad, 0.95).fillEllipse(20, 22, 8, 13);
+    graphics.lineStyle(5, 0x6a4a35, 1).lineBetween(30, 13, 34, 5);
+    graphics.fillStyle(leaf, 1).fillEllipse(43, 10, 21, 11);
+    graphics.lineStyle(3, ink, 1).strokeEllipse(43, 10, 21, 11);
+    graphics.lineStyle(2, deepLeaf, 0.8).lineBetween(34, 11, 49, 9);
+    graphics.fillStyle(cream, 0.85).fillCircle(39, 39, 2.5);
     graphics.generateTexture('apple', 60, 60);
     graphics.clear();
 
-    graphics.fillStyle(0x4d7fbd, 1).fillCircle(32, 33, 25);
-    graphics.fillStyle(0x70b8ee, 1).fillCircle(29, 29, 25);
-    graphics.fillStyle(0xf7d774, 1).fillTriangle(29, 5, 17, 31, 30, 30);
-    graphics.fillStyle(0xf18aa4, 1).fillTriangle(53, 27, 31, 30, 43, 45);
-    graphics.lineStyle(4, 0xf6fbff, 0.95)
-      .lineBetween(10, 20, 49, 42)
-      .lineBetween(13, 43, 47, 16);
-    graphics.lineStyle(4, 0x243039, 1).strokeCircle(30, 30, 25);
-    graphics.fillStyle(0xffffff, 0.75).fillCircle(20, 18, 4);
+    drawObjectShadow(30, 54, 45);
+    graphics.fillStyle(0x3f82b5, 1).fillCircle(32, 32, 24);
+    graphics.fillStyle(0x69b7df, 1).fillCircle(29, 29, 24);
+    graphics.fillStyle(0xf4cd65, 1).fillTriangle(28, 5, 17, 30, 30, 29);
+    graphics.fillStyle(peach, 1).fillTriangle(53, 27, 31, 29, 43, 46);
+    graphics.fillStyle(purple, 1).fillTriangle(20, 51, 29, 31, 42, 47);
+    graphics.lineStyle(3, cream, 0.9).lineBetween(10, 19, 49, 42).lineBetween(13, 43, 47, 15);
+    graphics.lineStyle(4, ink, 1).strokeCircle(29, 29, 24);
+    graphics.fillStyle(highlight, 0.9).fillCircle(19, 17, 4);
     graphics.generateTexture('ball', 60, 60);
     graphics.clear();
 
-    graphics.fillStyle(0x3d8ea8, 1).fillCircle(32, 38, 20).fillTriangle(32, 7, 13, 38, 51, 38);
-    graphics.fillStyle(0x68d2df, 1).fillCircle(29, 35, 20).fillTriangle(29, 4, 10, 35, 48, 35);
-    graphics.lineStyle(4, 0x243039, 1)
-      .strokeTriangle(29, 4, 10, 35, 48, 35)
-      .strokeCircle(29, 35, 20);
-    graphics.fillStyle(0xc9f7f5, 0.9).fillEllipse(21, 29, 7, 14);
-    graphics.lineStyle(3, 0xffffff, 0.7).lineBetween(18, 49, 41, 49);
+    drawObjectShadow(30, 54, 42);
+    graphics.fillStyle(0x398fa8, 1).fillRoundedRect(13, 17, 38, 36, 13);
+    graphics.fillStyle(sky, 1).fillRoundedRect(10, 14, 38, 36, 13);
+    graphics.lineStyle(4, ink, 1).strokeRoundedRect(10, 14, 38, 36, 13);
+    graphics.fillStyle(cream, 1).fillRoundedRect(20, 7, 20, 10, 4);
+    graphics.lineStyle(3, ink, 1).strokeRoundedRect(20, 7, 20, 10, 4);
+    graphics.fillStyle(0xdaf7f4, 0.9).fillEllipse(19, 27, 7, 15);
+    graphics.lineStyle(3, 0xffffff, 0.75).lineBetween(18, 43, 40, 43);
+    graphics.fillStyle(deepLeaf, 0.9).fillEllipse(36, 32, 12, 8);
+    graphics.lineStyle(2, ink, 0.75).strokeEllipse(36, 32, 12, 8);
     graphics.generateTexture('water', 60, 60);
     graphics.clear();
 
-    graphics.fillStyle(0x8152a5, 1).fillRoundedRect(6, 17, 48, 37, 8);
-    graphics.fillStyle(0xc49ae3, 1).fillRoundedRect(6, 13, 48, 37, 8);
-    graphics.lineStyle(4, 0x243039, 1).strokeRoundedRect(6, 13, 48, 37, 8);
-    graphics.lineStyle(4, 0x243039, 1).lineBetween(18, 13, 23, 7).lineBetween(23, 7, 40, 7).lineBetween(40, 7, 45, 13);
-    graphics.fillStyle(0x32404a, 1).fillCircle(20, 34, 9).fillCircle(41, 34, 9);
-    graphics.fillStyle(0x9ee0de, 1).fillCircle(20, 34, 4);
-    graphics.fillStyle(0xf4c46d, 1).fillCircle(41, 34, 4);
-    graphics.fillStyle(0xfff0a2, 1).fillCircle(14, 21, 2.5).fillCircle(21, 21, 2.5);
+    drawObjectShadow(30, 54, 48);
+    graphics.fillStyle(0x755494, 1).fillRoundedRect(8, 18, 47, 35, 9);
+    graphics.fillStyle(purple, 1).fillRoundedRect(6, 14, 47, 35, 9);
+    graphics.lineStyle(4, ink, 1).strokeRoundedRect(6, 14, 47, 35, 9);
+    graphics.lineStyle(4, ink, 1).lineBetween(18, 14, 23, 7).lineBetween(23, 7, 39, 7).lineBetween(39, 7, 45, 14);
+    graphics.fillStyle(deepInk, 1).fillCircle(19, 33, 9).fillCircle(40, 33, 9);
+    graphics.lineStyle(2, cream, 0.8).strokeCircle(19, 33, 7).strokeCircle(40, 33, 7);
+    graphics.fillStyle(sky, 1).fillCircle(19, 33, 3.5);
+    graphics.fillStyle(honey, 1).fillCircle(40, 33, 3.5);
+    graphics.fillStyle(highlight, 0.9).fillCircle(14, 21, 2.5).fillCircle(21, 21, 2.5);
+    graphics.lineStyle(3, cream, 0.95).lineBetween(47, 7, 47, 0).lineBetween(47, 1, 54, 0).lineBetween(54, 0, 54, 7);
+    graphics.fillStyle(cream, 1).fillCircle(47, 8, 3).fillCircle(54, 8, 3);
     graphics.generateTexture('music', 60, 60);
     graphics.clear();
 
-    graphics.fillStyle(0xa94761, 1).fillCircle(22, 27, 15).fillCircle(40, 27, 15).fillTriangle(9, 29, 53, 29, 31, 58);
-    graphics.fillStyle(0xee7892, 1).fillCircle(20, 23, 15).fillCircle(38, 23, 15).fillTriangle(7, 25, 51, 25, 29, 54);
-    graphics.lineStyle(4, 0x243039, 1).strokeCircle(20, 23, 15).strokeCircle(38, 23, 15)
-      .lineBetween(7, 25, 29, 54).lineBetween(29, 54, 51, 25);
-    graphics.fillStyle(0xffbdc9, 0.9).fillEllipse(17, 19, 7, 10);
+    drawObjectShadow(30, 55, 43);
+    drawHeart(30, 27, 1, rose, ink);
+    graphics.fillStyle(0xffafbc, 0.95).fillEllipse(19, 18, 7, 11);
+    graphics.fillStyle(highlight, 0.85).fillCircle(40, 20, 3);
     graphics.generateTexture('heart', 60, 60);
     graphics.clear();
 
-    graphics.fillStyle(0x2b3740, 1).fillCircle(20, 23, 15).fillCircle(38, 23, 15).fillTriangle(7, 25, 51, 25, 29, 54);
-    graphics.lineStyle(4, 0x71828d, 1).strokeCircle(20, 23, 15).strokeCircle(38, 23, 15)
-      .lineBetween(8, 25, 30, 55).lineBetween(30, 55, 52, 25);
+    drawHeart(30, 27, 1, 0x475853, 0x718d83);
+    graphics.fillStyle(0x81928b, 0.3).fillEllipse(19, 18, 7, 11);
     graphics.generateTexture('heart-empty', 60, 60);
     graphics.clear();
 
-    const drawScoreHeart = (fill: number, stroke: number, shine: boolean): void => {
-      const points = Array.from({ length: 48 }, (_, index) => {
-        const angle = (index / 48) * Math.PI * 2;
-        const x = 24 + Math.pow(Math.sin(angle), 3) * 19;
-        const y = 25 - (
-          13 * Math.cos(angle)
-          - 5 * Math.cos(angle * 2)
-          - 2 * Math.cos(angle * 3)
-          - Math.cos(angle * 4)
-        );
-        return new Phaser.Math.Vector2(x, y);
-      });
-      graphics.fillStyle(fill, 1).fillPoints(points, true);
-      graphics.lineStyle(3, stroke, 1).strokePoints(points, true);
-      if (shine) graphics.fillStyle(0xffdbe3, 0.9).fillEllipse(14, 15, 7, 10);
-    };
-    drawScoreHeart(0x322831, 0xb07a8d, false);
+    graphics.fillStyle(deepInk, 0.18).fillEllipse(25, 43, 34, 7);
+    drawHeart(25, 22, 0.72, 0xf8e9cc, 0xb99b79);
+    graphics.fillStyle(0xffffff, 0.4).fillEllipse(18, 16, 4, 7);
     graphics.generateTexture('score-heart-empty', 50, 50);
     graphics.clear();
-    drawScoreHeart(0xf17691, 0x7c364d, true);
+    graphics.fillStyle(deepInk, 0.18).fillEllipse(25, 43, 34, 7);
+    drawHeart(25, 22, 0.72, rose, 0x8d4154);
+    graphics.fillStyle(0xffc2ca, 0.95).fillEllipse(18, 16, 4, 7);
+    graphics.fillStyle(highlight, 0.75).fillCircle(31, 16, 2);
     graphics.generateTexture('score-heart', 50, 50);
     graphics.clear();
 
-    graphics.fillStyle(0xb67ad9, 1).fillRect(5, 14, 70, 58);
-    graphics.lineStyle(5, 0x182027, 1).strokeRect(5, 14, 70, 58);
-    graphics.fillStyle(0xffdc6e, 1).fillRect(34, 14, 12, 58).fillRect(5, 34, 70, 12);
-    graphics.lineStyle(4, 0x182027, 1).strokeRect(5, 14, 70, 58);
+    graphics.fillStyle(deepInk, 0.22).fillEllipse(40, 72, 66, 12);
+    graphics.fillStyle(0x765693, 1).fillRoundedRect(8, 22, 66, 49, 9);
+    graphics.fillStyle(purple, 1).fillRoundedRect(6, 17, 66, 49, 9);
+    graphics.lineStyle(4, ink, 1).strokeRoundedRect(6, 17, 66, 49, 9);
+    graphics.fillStyle(honey, 1).fillRoundedRect(34, 17, 12, 49, 3).fillRoundedRect(6, 35, 66, 11, 3);
+    graphics.lineStyle(2.5, ink, 0.9).strokeRoundedRect(34, 17, 12, 49, 3);
+    graphics.fillStyle(0xf7c96f, 1).fillEllipse(28, 13, 28, 15).fillEllipse(52, 13, 28, 15);
+    graphics.lineStyle(3, ink, 1).strokeEllipse(28, 13, 28, 15).strokeEllipse(52, 13, 28, 15);
+    graphics.fillStyle(honey, 1).fillCircle(40, 16, 8);
+    graphics.lineStyle(3, ink, 1).strokeCircle(40, 16, 8);
+    graphics.fillStyle(highlight, 0.8).fillEllipse(18, 27, 12, 5);
+    graphics.fillStyle(cream, 1).fillCircle(40, 40, 5);
+    graphics.lineStyle(2, ink, 0.85).strokeCircle(40, 40, 5);
     graphics.generateTexture('loot', 80, 80);
     graphics.destroy();
   }
@@ -648,32 +689,46 @@ export class NurseryScene extends Phaser.Scene {
     });
 
     const controlPanel = this.add.graphics().setDepth(701);
-    controlPanel.fillStyle(0x101a21, 0.98).fillRoundedRect(640, 638, 600, 78, 15);
-    controlPanel.lineStyle(4, 0x344b50, 1).strokeRoundedRect(640, 638, 600, 78, 15);
-    controlPanel.lineStyle(2, 0x7fa56e, 0.75).strokeRoundedRect(644, 642, 592, 70, 12);
-    controlPanel.fillStyle(0x446a50, 0.75).fillCircle(657, 653, 4).fillCircle(1223, 701, 4);
+    controlPanel.fillStyle(0x20332e, 0.28).fillRoundedRect(644, 643, 600, 75, 17);
+    controlPanel.fillStyle(0x9d6d47, 1).fillRoundedRect(640, 638, 600, 76, 17);
+    controlPanel.fillStyle(0xd6a762, 1).fillRoundedRect(640, 634, 600, 76, 17);
+    controlPanel.lineStyle(4, 0x2f453f, 1).strokeRoundedRect(640, 634, 600, 76, 17);
+    controlPanel.lineStyle(2, 0xffe0a0, 0.8).lineBetween(659, 643, 1220, 643);
+    controlPanel.fillStyle(0x6f9c61, 0.95)
+      .fillEllipse(657, 649, 18, 9)
+      .fillEllipse(1224, 696, 18, 9);
+    controlPanel.lineStyle(2, 0x2f453f, 0.85)
+      .strokeEllipse(657, 649, 18, 9)
+      .strokeEllipse(1224, 696, 18, 9);
 
     const fireButtonArt = this.add.graphics();
-    fireButtonArt.fillStyle(0x17231f, 1).fillCircle(2, 3, 27);
-    fireButtonArt.fillStyle(0x426b50, 1).fillCircle(0, 0, 25);
-    fireButtonArt.lineStyle(4, 0xffdc6e, 1).strokeCircle(0, 0, 25);
-    fireButtonArt.fillStyle(0xffffff, 0.12).fillEllipse(-7, -8, 17, 8);
+    fireButtonArt.fillStyle(0x20332e, 0.3).fillCircle(2, 4, 29);
+    for (let petal = 0; petal < 8; petal += 1) {
+      const angle = (petal / 8) * Math.PI * 2;
+      fireButtonArt.fillStyle(petal % 2 === 0 ? 0xf4a0b5 : 0xf7ba87, 1)
+        .fillCircle(Math.cos(angle) * 18, Math.sin(angle) * 18, 11);
+    }
+    fireButtonArt.lineStyle(3, 0x6f4b42, 0.9).strokeCircle(0, 0, 28);
+    fireButtonArt.fillStyle(0xffd96f, 1).fillCircle(0, 0, 17);
+    fireButtonArt.lineStyle(3, 0x6c5131, 1).strokeCircle(0, 0, 17);
+    fireButtonArt.fillStyle(0xfff2bd, 0.9).fillEllipse(-6, -7, 9, 6);
     this.cannonFireButton = this.add.container(FIRE_CONTROL.x, FIRE_CONTROL.y, [fireButtonArt])
       .setSize(62, 58).setDepth(704).setInteractive({ useHandCursor: true });
     this.cannonFireLabel = this.add.text(FIRE_CONTROL.x + 1, FIRE_CONTROL.y - 1, '➤', {
-      color: '#fff3aa', fontFamily: 'sans-serif', fontSize: '28px', fontStyle: 'bold', align: 'center',
+      color: '#4a5947', fontFamily: 'sans-serif', fontSize: '27px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5).setDepth(705);
 
     const powerTrack = this.add.graphics().setDepth(704);
-    powerTrack.fillStyle(0xffdc6e, 1)
+    powerTrack.fillStyle(0x5e8959, 1)
       .fillTriangle(782, 660, 769, 679, 780, 679)
       .fillTriangle(780, 674, 790, 674, 776, 691);
-    powerTrack.fillStyle(0x0b1116, 1).fillRoundedRect(POWER_CONTROL.left - 2, POWER_CONTROL.y - 8, 198, 16, 7);
-    powerTrack.lineStyle(2, 0x60747d, 1).strokeRoundedRect(POWER_CONTROL.left - 2, POWER_CONTROL.y - 8, 198, 16, 7);
+    powerTrack.fillStyle(0x7d583f, 0.3).fillRoundedRect(POWER_CONTROL.left - 1, POWER_CONTROL.y - 6, 198, 18, 8);
+    powerTrack.fillStyle(0xffedc1, 1).fillRoundedRect(POWER_CONTROL.left - 3, POWER_CONTROL.y - 9, 198, 16, 8);
+    powerTrack.lineStyle(3, 0x5a4939, 1).strokeRoundedRect(POWER_CONTROL.left - 3, POWER_CONTROL.y - 9, 198, 16, 8);
     this.cannonPowerFill = this.add.rectangle(POWER_CONTROL.left, POWER_CONTROL.y, 0, 10, 0xe06c75, 1)
       .setOrigin(0, 0.5).setDepth(705);
     for (let tick = 1; tick < 5; tick += 1) {
-      powerTrack.lineStyle(2, 0x101a21, 0.8).lineBetween(
+      powerTrack.lineStyle(2, 0xb69369, 0.8).lineBetween(
         POWER_CONTROL.left + tick * 38,
         POWER_CONTROL.y - 5,
         POWER_CONTROL.left + tick * 38,
@@ -682,9 +737,11 @@ export class NurseryScene extends Phaser.Scene {
     }
 
     const magicSlot = this.add.graphics().setDepth(704);
-    magicSlot.fillStyle(0x19252c, 1).fillRoundedRect(1064, 651, 52, 48, 10);
-    magicSlot.lineStyle(3, 0xc89fe7, 0.95).strokeRoundedRect(1064, 651, 52, 48, 10);
-    magicSlot.lineStyle(2, 0xffffff, 0.08).lineBetween(1073, 659, 1107, 659);
+    magicSlot.fillStyle(0x725d45, 0.25).fillRoundedRect(1066, 654, 52, 48, 11);
+    magicSlot.fillStyle(0xffedc7, 1).fillRoundedRect(1064, 649, 52, 48, 11);
+    magicSlot.lineStyle(3, 0x8d67aa, 1).strokeRoundedRect(1064, 649, 52, 48, 11);
+    magicSlot.fillStyle(0xdcb8ef, 0.45).fillCircle(1090, 673, 15);
+    magicSlot.lineStyle(2, 0xffffff, 0.72).lineBetween(1073, 657, 1107, 657);
     this.boostLabel = this.add.text(1090, POWER_CONTROL.y, '', {
       color: '#ffdc6e', fontFamily: 'sans-serif', fontSize: '29px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5).setDepth(705);
@@ -695,13 +752,13 @@ export class NurseryScene extends Phaser.Scene {
 
   private createItemTray(): void {
     const tray = this.add.graphics().setDepth(701);
-    tray.fillStyle(0x101a21, 0.98).fillRoundedRect(6, 638, 312, 78, 15);
-    tray.lineStyle(4, 0x344b50, 1).strokeRoundedRect(6, 638, 312, 78, 15);
-    tray.lineStyle(2, 0xc99061, 0.75).strokeRoundedRect(10, 642, 304, 70, 12);
-    tray.fillStyle(0x3b2d28, 1).fillRoundedRect(18, 635, 76, 18, 8);
-    this.add.text(30, 638, 'TOY BAG', {
-      color: '#f0c08c', fontFamily: 'monospace', fontSize: '9px', fontStyle: 'bold',
-    }).setDepth(704);
+    tray.fillStyle(0x20332e, 0.28).fillRoundedRect(9, 643, 312, 75, 17);
+    tray.fillStyle(0x9d6d47, 1).fillRoundedRect(6, 638, 312, 76, 17);
+    tray.fillStyle(0xd6a762, 1).fillRoundedRect(6, 634, 312, 76, 17);
+    tray.lineStyle(4, 0x2f453f, 1).strokeRoundedRect(6, 634, 312, 76, 17);
+    tray.lineStyle(2, 0xffe0a0, 0.8).lineBetween(22, 643, 302, 643);
+    tray.fillStyle(0x6f9c61, 1).fillEllipse(26, 646, 18, 9).fillEllipse(298, 697, 18, 9);
+    tray.lineStyle(2, 0x2f453f, 0.8).strokeEllipse(26, 646, 18, 9).strokeEllipse(298, 697, 18, 9);
     for (const need of INVENTORY_NEEDS) this.createInventorySlot(need);
     this.updateInventory();
   }
@@ -710,20 +767,25 @@ export class NurseryScene extends Phaser.Scene {
     const definition = ITEM_DEFINITIONS[need];
     const { home } = definition;
     const slot = this.add.graphics().setDepth(702);
-    slot.fillStyle(0x19252c, 1).fillRoundedRect(home.x - 26, home.y - 24, 52, 48, 10);
-    slot.lineStyle(3, definition.color, 0.95).strokeRoundedRect(home.x - 26, home.y - 24, 52, 48, 10);
-    slot.lineStyle(2, 0xffffff, 0.08).lineBetween(home.x - 17, home.y - 16, home.x + 17, home.y - 16);
+    slot.fillStyle(0x70543e, 0.24).fillRoundedRect(home.x - 24, home.y - 21, 52, 48, 11);
+    slot.fillStyle(0xffedc7, 1).fillRoundedRect(home.x - 26, home.y - 25, 52, 48, 11);
+    slot.lineStyle(3, 0x2f453f, 1).strokeRoundedRect(home.x - 26, home.y - 25, 52, 48, 11);
+    slot.lineStyle(3, definition.color, 0.9).strokeCircle(home.x, home.y - 2, 19);
+    slot.lineStyle(2, 0xffffff, 0.78).lineBetween(home.x - 16, home.y - 17, home.x + 10, home.y - 17);
     const item = this.add.image(home.x, home.y - 2, definition.name)
       .setScale(ITEM_TRAY_SCALE * 1.06).setDepth(704).setInteractive({ useHandCursor: true });
-    const label = this.add.text(home.x, 704, '', {
-      color: '#ffffff', fontFamily: 'monospace', fontSize: '8px', fontStyle: 'bold',
+    const label = this.add.text(home.x + 18, 699, '', {
+      color: '#4c604f', fontFamily: 'sans-serif', fontSize: '12px', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(704);
     item.on('pointerup', () => this.selectInventoryItem(need));
 
     const lockDrawing = this.add.graphics();
-    lockDrawing.lineStyle(4, 0x93a4af, 1).beginPath().arc(0, -7, 10, Math.PI, Math.PI * 2).strokePath();
-    lockDrawing.fillStyle(0x93a4af, 1).fillRect(-14, -7, 28, 23);
-    lockDrawing.fillStyle(0x182027, 1).fillCircle(0, 2, 3).fillRect(-1.5, 2, 3, 8);
+    lockDrawing.fillStyle(0x6f513d, 0.22).fillRoundedRect(-13, -4, 29, 25, 7);
+    lockDrawing.lineStyle(5, 0x8c6b4b, 1).beginPath().arc(0, -5, 10, Math.PI, Math.PI * 2).strokePath();
+    lockDrawing.fillStyle(0xe4b85f, 1).fillRoundedRect(-14, -7, 28, 23, 6);
+    lockDrawing.lineStyle(3, 0x5e4938, 1).strokeRoundedRect(-14, -7, 28, 23, 6);
+    lockDrawing.fillStyle(0x5e4938, 1).fillCircle(0, 1, 3).fillRoundedRect(-1.5, 1, 3, 8, 1);
+    lockDrawing.fillStyle(0xffe8a5, 0.85).fillEllipse(-6, -1, 5, 9);
     const lock = this.add.container(home.x, home.y, [lockDrawing]).setDepth(705).setSize(52, 46)
       .setInteractive({ useHandCursor: true });
     lock.on('pointerup', () => this.bumpLockedSlot(need));
@@ -760,7 +822,7 @@ export class NurseryScene extends Phaser.Scene {
     item.setScale(0.48).setAngle(0).setDepth(635);
     this.positionLoadedItem();
     this.updateInventory();
-    this.cannonFireLabel.setText('➤').setColor('#fff3aa');
+    this.cannonFireLabel.setText('➤').setColor('#4a5947');
     this.showSparkles(CANNON.x, CANNON.y, 0xffdc6e);
     this.sounds.bounce();
     this.drawCannonAimGuide();
@@ -771,7 +833,7 @@ export class NurseryScene extends Phaser.Scene {
     this.cannonLoadedItem = undefined;
     this.cannonCharging = false;
     this.cannonPower = 0;
-    this.cannonFireLabel.setText('➤').setColor('#fff3aa');
+    this.cannonFireLabel.setText('➤').setColor('#4a5947');
     this.resetFlowerPose();
     this.drawCannonAimGuide();
     if (item) this.destroyCareItem(item);
@@ -1340,7 +1402,7 @@ export class NurseryScene extends Phaser.Scene {
     this.fieldCareItems.add(shot.item);
     this.armFieldCareItem(shot.item);
     this.cannonPower = 0;
-    this.cannonFireLabel.setText('➤').setColor('#fff3aa');
+    this.cannonFireLabel.setText('➤').setColor('#4a5947');
     this.resetFlowerPose();
     this.sounds.bounce();
     this.showSparkles(shot.item.x, shot.item.y, 0xffdc6e);
@@ -1451,18 +1513,17 @@ export class NurseryScene extends Phaser.Scene {
 
     this.lootAnnouncement?.destroy();
     const unlockedNeed = unlockedSlot ? INVENTORY_NEEDS[unlockedSlot - 1] : undefined;
-    const unlockedLabel = unlockedNeed ? ITEM_DEFINITIONS[unlockedNeed].label : undefined;
-    const panel = this.add.rectangle(0, 0, 600, 174, 0x182027, 0.94).setStrokeStyle(6, 0xffdc6e, 1);
-    const title = this.add.text(0, -37, unlockedLabel ? `${unlockedLabel} UNLOCKED!` : 'POWER SHOT!', {
-      color: '#ffdc6e', fontFamily: 'monospace', fontSize: unlockedLabel ? '43px' : '54px', fontStyle: 'bold',
+    const panelShadow = this.add.rectangle(5, 7, 420, 176, 0x20332e, 0.28).setStrokeStyle(0);
+    const panel = this.add.rectangle(0, 0, 420, 176, 0xffedc7, 0.98).setStrokeStyle(6, 0x6e4f3b, 1);
+    const innerPanel = this.add.rectangle(0, 0, 397, 153, 0xfff7df, 0.5).setStrokeStyle(3, 0xe0a65e, 0.9);
+    const title = this.add.text(0, -61, '✦  NEW!  ✦', {
+      color: '#7c536f', fontFamily: 'sans-serif', fontSize: '24px', fontStyle: 'bold',
     }).setOrigin(0.5);
-    const subtitleText = unlockedLabel
-      ? `INVENTORY  ${this.model.unlockedSlots} / ${INVENTORY_NEEDS.length}\nTURBO FLOWER READY  ×1.45`
-      : 'NEXT FLOWER LAUNCH  ×1.45';
-    const subtitle = this.add.text(0, 37, subtitleText, {
-      color: '#ffffff', fontFamily: 'monospace', fontSize: '19px', fontStyle: 'bold', align: 'center', lineSpacing: 7,
+    const rewardIcon = this.add.image(0, -4, unlockedNeed ? ITEM_DEFINITIONS[unlockedNeed].name : 'loot').setScale(1.18);
+    const subtitle = this.add.text(0, 58, `✦  ×1.45`, {
+      color: '#4f7358', fontFamily: 'sans-serif', fontSize: '22px', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
-    const announcement = this.add.container(WIDTH / 2, HEIGHT / 2 - 25, [panel, title, subtitle])
+    const announcement = this.add.container(WIDTH / 2, HEIGHT / 2 - 25, [panelShadow, panel, innerPanel, title, rewardIcon, subtitle])
       .setDepth(2000).setScale(0.2).setAlpha(0);
     this.lootAnnouncement = announcement;
     this.tweens.add({ targets: announcement, scale: 1, alpha: 1, duration: 280, ease: 'Back.Out' });
@@ -1549,17 +1610,18 @@ export class NurseryScene extends Phaser.Scene {
 
   private createProgress(): void {
     const panel = this.add.graphics().setDepth(801);
-    panel.fillStyle(0x101a21, 0.97).fillRoundedRect(14, 8, 224, 52, 12);
-    panel.lineStyle(3, 0x455963, 1).strokeRoundedRect(14, 8, 224, 52, 12);
-    panel.lineStyle(2, 0xee7892, 0.58).lineBetween(24, 56, 228, 56);
-    this.add.text(27, 13, 'NEXT EGG', {
-      color: '#a9bdc3', fontSize: '9px', fontFamily: 'monospace', fontStyle: 'bold',
-    }).setDepth(802);
+    panel.fillStyle(0x20332e, 0.24).fillRoundedRect(17, 12, 224, 52, 14);
+    panel.fillStyle(0xb98352, 1).fillRoundedRect(14, 8, 224, 52, 14);
+    panel.fillStyle(0xffedc7, 1).fillRoundedRect(14, 5, 224, 52, 14);
+    panel.lineStyle(3, 0x2f453f, 1).strokeRoundedRect(14, 5, 224, 52, 14);
+    panel.lineStyle(2, 0xffffff, 0.72).lineBetween(29, 13, 222, 13);
     this.heartIcons = Array.from({ length: this.model.heartTarget }, (_, index) => this.add.image(
-      43 + index * 38,
-      41,
+      39 + index * 38,
+      32,
       'score-heart-empty',
-    ).setScale(0.56).setDepth(803));
+    ).setScale(0.62).setDepth(803));
+    this.add.image(214, 31, 'egg').setScale(0.25).setDepth(803);
+    panel.fillStyle(0x7ba16a, 1).fillTriangle(177, 27, 184, 32, 177, 37);
     this.heartLabel = this.add.text(202, 39, '', {
       color: '#ffdc6e', fontSize: '10px', fontStyle: 'bold', fontFamily: 'monospace', align: 'center',
     }).setOrigin(0, 0.5).setDepth(803);
@@ -1575,11 +1637,13 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private makeRoundButton(x: number, y: number, radius: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
-    const circle = this.add.rectangle(0, 0, radius * 2, radius * 2, 0x202830, 1).setStrokeStyle(3, 0x93a4af, 1)
+    const shadow = this.add.circle(2, 3, radius, 0x20332e, 0.25);
+    const circle = this.add.circle(0, 0, radius, 0xffedc7, 1).setStrokeStyle(3, 0x466253, 1)
       .setInteractive({ useHandCursor: true }).setName('hit');
-    const text = this.add.text(0, -2, label, { color: '#ffffff', fontSize: `${Math.round(radius * 1.15)}px`, fontStyle: 'bold' })
+    const shine = this.add.ellipse(-6, -8, radius * 0.75, radius * 0.34, 0xffffff, 0.58);
+    const text = this.add.text(0, -2, label, { color: '#4e6757', fontSize: `${Math.round(radius * 1.15)}px`, fontStyle: 'bold' })
       .setOrigin(0.5).setName('label');
-    const button = this.add.container(x, y, [circle, text]).setDepth(850);
+    const button = this.add.container(x, y, [shadow, circle, shine, text]).setDepth(850);
     circle.on('pointerdown', onClick);
     return button;
   }
@@ -1806,13 +1870,15 @@ export class NurseryScene extends Phaser.Scene {
 
   private createNeedBubble(): { bubble: Phaser.GameObjects.Container; icon: Phaser.GameObjects.Image } {
     const shadow = this.add.graphics();
-    shadow.fillStyle(0x182027, 0.24).fillRoundedRect(-50, -34, 100, 70, 16);
+    shadow.fillStyle(0x20332e, 0.2).fillRoundedRect(-48, -32, 100, 70, 20);
     const shape = this.add.graphics();
-    shape.fillStyle(0xfff8e8, 1).fillRoundedRect(-50, -38, 100, 70, 16);
-    shape.lineStyle(4, 0x243039, 1).strokeRoundedRect(-50, -38, 100, 70, 16);
-    shape.fillStyle(0xfff8e8, 1).fillTriangle(-13, 31, 10, 31, -3, 47);
-    shape.lineStyle(3, 0x243039, 1).lineBetween(-13, 31, -3, 47).lineBetween(-3, 47, 10, 31);
-    const icon = this.add.image(0, -3, 'apple').setScale(0.78);
+    shape.fillStyle(0xfff6dd, 1).fillRoundedRect(-50, -38, 100, 70, 20);
+    shape.lineStyle(4, 0x2f453f, 1).strokeRoundedRect(-50, -38, 100, 70, 20);
+    shape.fillStyle(0xfff6dd, 1).fillTriangle(-13, 30, 10, 30, -3, 47);
+    shape.lineStyle(3, 0x2f453f, 1).lineBetween(-13, 30, -3, 47).lineBetween(-3, 47, 10, 30);
+    shape.fillStyle(0xffffff, 0.68).fillEllipse(-22, -27, 30, 8);
+    shape.fillStyle(0xeaa0a7, 0.4).fillCircle(-38, 14, 4).fillCircle(38, 14, 4);
+    const icon = this.add.image(0, -3, 'apple').setScale(0.82);
     const bubble = this.add.container(0, 0, [shadow, shape, icon]).setDepth(NEED_BUBBLE_DEPTH).setVisible(false);
     return { bubble, icon };
   }
@@ -2086,8 +2152,8 @@ export class NurseryScene extends Phaser.Scene {
       this.inventoryItems.get(need)?.setVisible(unlocked).setAlpha(enabled ? 1 : 0.45);
       this.inventoryLocks.get(need)?.setVisible(!unlocked);
       this.inventoryLabels.get(need)
-        ?.setText(unlocked ? `${ITEM_DEFINITIONS[need].label} ∞` : 'LOCKED')
-        .setColor(unlocked ? '#ffffff' : '#93a4af');
+        ?.setText(unlocked ? '∞' : '')
+        .setColor('#4c604f');
     }
     if (this.boostLabel) {
       this.boostLabel
@@ -2336,7 +2402,7 @@ export class NurseryScene extends Phaser.Scene {
   private updateProgress(animate: boolean): void {
     const rewardReady = this.model.newEggUnlocked;
     this.heartIcons.forEach((heart, index) => {
-      heart.setTexture(index < this.model.hearts ? 'score-heart' : 'score-heart-empty').setScale(0.56).setAlpha(1);
+      heart.setTexture(index < this.model.hearts ? 'score-heart' : 'score-heart-empty').setScale(0.62).setAlpha(1);
     });
     this.heartLabel.setText('');
     if (animate && this.model.hearts > 0) {
@@ -2344,12 +2410,12 @@ export class NurseryScene extends Phaser.Scene {
       this.tweens.killTweensOf(latestHeart);
       this.tweens.add({
         targets: latestHeart,
-        scale: 0.74,
+        scale: 0.82,
         angle: { from: -10, to: 10 },
         duration: 170,
         yoyo: true,
         ease: 'Back.Out',
-        onComplete: () => latestHeart.setScale(0.56).setAngle(0),
+        onComplete: () => latestHeart.setScale(0.62).setAngle(0),
       });
     }
     if (animate && !rewardReady && this.model.hearts === Math.ceil(this.model.heartTarget / 2)) {
