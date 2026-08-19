@@ -115,6 +115,30 @@ test('hatches into an immediate hunger need with both permanent inventory tools'
   expect(await page.evaluate(() => window.__DINOLAND__!.getState().fireControlSymbol)).toBe('➤');
 });
 
+test('turns and charges the flower launcher with arrow keys and Space', async ({ page }) => {
+  await loadField(page);
+  const { point } = await canvasControls(page);
+  const apple = point(INVENTORY_X.apple, INVENTORY_Y);
+  await page.mouse.click(apple.x, apple.y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBe('apple');
+
+  const initialAngle = await page.evaluate(() => window.__DINOLAND__!.getState().cannonAngle);
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(360);
+  await page.keyboard.up('ArrowRight');
+  await expect.poll(async () => {
+    const angle = await page.evaluate(() => window.__DINOLAND__!.getState().cannonAngle);
+    return Math.abs(angle - initialAngle);
+  }).toBeGreaterThan(0.35);
+
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(520);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonPower)).toBeGreaterThan(0.2);
+  await page.keyboard.up('Space');
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().cannonLoaded)).toBeNull();
+  expect(await page.evaluate(() => window.__DINOLAND__!.getState().lastCannonPower)).toBeGreaterThan(0.2);
+});
+
 test('migrates old scoring and keeps needs cycling after one heart', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('dinoland-progress-v2', JSON.stringify({
     hatched: true,

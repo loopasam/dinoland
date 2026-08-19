@@ -53,6 +53,7 @@ const POWER_CONTROL = { left: 800, center: 895, y: 675 };
 const CANNON_RADIUS = 44;
 const CANNON_MUZZLE_DISTANCE = CANNON_RADIUS + CARE_ITEM_RADIUS + 5;
 const CANNON_CHARGE_MS = 1700;
+const KEYBOARD_AIM_SPEED = Math.PI * 0.9;
 const PHYSICS_RESTITUTION = 0.9;
 const PHYSICS_FRICTION = 0.4;
 const PHYSICS_STOP_SPEED = 34;
@@ -135,6 +136,8 @@ export class NurseryScene extends Phaser.Scene {
   private cannonLoadedItem?: Phaser.GameObjects.Image;
   private cannonShot?: CannonShot;
   private cannonAiming = false;
+  private keyboardAiming = false;
+  private keyboardControls?: Phaser.Types.Input.Keyboard.CursorKeys;
   private cannonCharging = false;
   private cannonChargeStartedAt = 0;
   private cannonPower = 0;
@@ -179,6 +182,7 @@ export class NurseryScene extends Phaser.Scene {
     this.createLootBox();
     this.createProgress();
     this.createControls();
+    this.createKeyboardControls();
     this.input.on('pointerdown', () => this.sounds.unlock());
 
     if (this.model.mode === 'field') {
@@ -269,6 +273,7 @@ export class NurseryScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const physicsSeconds = this.physicsSeconds(delta);
+    this.updateKeyboardControls(physicsSeconds);
     this.updateCannon(physicsSeconds);
     this.updateDinoBounces(physicsSeconds);
     for (const dino of this.dinos) {
@@ -780,6 +785,37 @@ export class NurseryScene extends Phaser.Scene {
     this.drawCannonAimGuide();
   }
 
+  private createKeyboardControls(): void {
+    const keyboard = this.input.keyboard;
+    if (!keyboard) return;
+    this.keyboardControls = keyboard.createCursorKeys();
+    keyboard.addCapture([
+      Phaser.Input.Keyboard.KeyCodes.LEFT,
+      Phaser.Input.Keyboard.KeyCodes.RIGHT,
+      Phaser.Input.Keyboard.KeyCodes.SPACE,
+    ]);
+  }
+
+  private updateKeyboardControls(seconds: number): void {
+    const controls = this.keyboardControls;
+    if (!controls) return;
+
+    const turn = Number(controls.right.isDown) - Number(controls.left.isDown);
+    this.keyboardAiming = turn !== 0 && this.model.mode === 'field';
+    if (this.keyboardAiming) {
+      this.cannonAngle = Phaser.Math.Angle.Wrap(this.cannonAngle + turn * KEYBOARD_AIM_SPEED * seconds);
+      this.cannonBarrel.setRotation(this.cannonAngle);
+      this.positionLoadedItem();
+      this.drawCannonAimGuide();
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(controls.space)) {
+      this.sounds.unlock();
+      this.startCannonCharge();
+    }
+    if (Phaser.Input.Keyboard.JustUp(controls.space)) this.releaseCannonCharge();
+  }
+
   private positionLoadedItem(): void {
     if (!this.cannonLoadedItem) return;
     const muzzleDistance = this.flowerMuzzleDistance();
@@ -800,7 +836,7 @@ export class NurseryScene extends Phaser.Scene {
       return;
     }
     this.cannonCharging = true;
-    this.cannonChargeStartedAt = this.time.now;
+    this.cannonChargeStartedAt = performance.now();
     this.cannonPower = 0;
     this.cannonFireLabel.setText('●').setColor('#ffffff');
     this.sounds.chirp(0.7);
@@ -808,7 +844,7 @@ export class NurseryScene extends Phaser.Scene {
 
   private releaseCannonCharge(): void {
     if (!this.cannonCharging) return;
-    this.cannonPower = Phaser.Math.Clamp((this.time.now - this.cannonChargeStartedAt) / CANNON_CHARGE_MS, 0.12, 1);
+    this.cannonPower = Phaser.Math.Clamp((performance.now() - this.cannonChargeStartedAt) / CANNON_CHARGE_MS, 0.12, 1);
     this.cannonCharging = false;
     this.fireCannon();
   }
@@ -879,7 +915,7 @@ export class NurseryScene extends Phaser.Scene {
 
   private updateCannon(seconds: number): void {
     if (this.cannonCharging) {
-      this.cannonPower = Phaser.Math.Clamp((this.time.now - this.cannonChargeStartedAt) / CANNON_CHARGE_MS, 0, 1);
+      this.cannonPower = Phaser.Math.Clamp((performance.now() - this.cannonChargeStartedAt) / CANNON_CHARGE_MS, 0, 1);
       this.cannonFireLabel.setText(this.cannonPower >= 1 ? '✦' : '●');
       this.cannonBarrel.setScale(1 - this.cannonPower * 0.14, 1 + this.cannonPower * 0.08);
       this.flowerHead
@@ -891,7 +927,7 @@ export class NurseryScene extends Phaser.Scene {
     if (this.cannonLoadedItem) this.positionLoadedItem();
     this.updateMovingFieldObjects(seconds);
     if (!this.cannonShot) {
-      if (this.cannonCharging || this.cannonAiming) this.drawCannonAimGuide();
+      if (this.cannonCharging || this.cannonAiming || this.keyboardAiming) this.drawCannonAimGuide();
       return;
     }
 
