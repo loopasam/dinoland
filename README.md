@@ -1,6 +1,8 @@
 # Dinoland
 
-A browser prototype for placing, hatching, and caring for a growing herd of independently managed dinosaurs in a bounded, single-screen field. The current build deliberately uses labeled placeholder geometry and visible collision shapes so the interaction model can be tested before final art is introduced.
+A browser prototype for placing, hatching, and caring for a growing herd of independently managed dinosaurs in a bounded, single-screen field. The current build includes animated dinosaur rigs, illustrated runtime art, billiards-style interactions, and a procedural effects garden.
+
+There is intentionally no looping background music. Triceratops, T-Rex, and Brachiosaurus each have their own impact and happy-care voice, layered with action cues for eating, playing, drinking, music, and affection. Sounds begin after the first interaction, and the top-right button mutes every effect.
 
 ## Play
 

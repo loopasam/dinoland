@@ -225,7 +225,7 @@ export class NurseryScene extends Phaser.Scene {
         const dino = this.dinos[dinoIndex];
         const need = this.model.needFor(dinoIndex);
         if (!dino || !need || !this.model.fulfillNeed(dinoIndex, need)) return false;
-        this.completeNeed(dino);
+        this.completeNeed(dino, need);
         return true;
       },
       placeDino: (dinoIndex, x, y) => {
@@ -362,6 +362,7 @@ export class NurseryScene extends Phaser.Scene {
       lootVisible: this.lootBox.visible,
       cannonBoostReady: this.model.cannonBoostReady,
       magicSlotSymbol: this.boostLabel.text,
+      soundMuted: this.sounds.isMuted,
       heartTextures: this.heartIcons.map((heart) => heart.texture.key),
       lootCelebrationVisible: this.lootAnnouncement?.visible ?? false,
       lootX: Math.round(this.lootBox.x),
@@ -536,7 +537,7 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private createMap(): void {
-    this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0x172027).setDepth(-4);
+    this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0xc5df8b).setDepth(-4);
     this.add.rectangle(
       (FIELD.left + FIELD.right) / 2,
       (FIELD.top + FIELD.bottom) / 2,
@@ -1157,7 +1158,10 @@ export class NurseryScene extends Phaser.Scene {
     dino.sprite.y += ny * overlap * 0.42;
     this.clampDino(dino.sprite);
 
-    this.prepareDinoForBounce(dino);
+    this.prepareDinoForBounce(
+      dino,
+      Phaser.Math.Clamp(Math.hypot(motion.vx, motion.vy) / 850, 0.35, 1),
+    );
     const relativeNormal = (motion.vx - dino.bounceVx) * nx + (motion.vy - dino.bounceVy) * ny;
     if (relativeNormal <= 0) return false;
     const dinoMass = 1.35;
@@ -1219,12 +1223,13 @@ export class NurseryScene extends Phaser.Scene {
     return this.activeFieldObjects().some((object) => object.item === item);
   }
 
-  private prepareDinoForBounce(dino: DinoEntity): void {
+  private prepareDinoForBounce(dino: DinoEntity, soundIntensity = 0.65): void {
     this.tweens.killTweensOf(dino.sprite);
     dino.roamTimer?.remove(false);
     dino.roamTimer = undefined;
     dino.reacting = false;
     if (!dino.bouncing) {
+      this.sounds.dinoHit(dino.profile.species, soundIntensity);
       dino.bouncing = true;
       dino.bounceVx = 0;
       dino.bounceVy = 0;
@@ -2074,8 +2079,7 @@ export class NurseryScene extends Phaser.Scene {
     this.fieldCareItems.delete(item);
     this.careItemNeeds.delete(item);
     item.disableInteractive();
-    if (need === 'hunger') this.sounds.eat(); else this.sounds.giggle();
-    if (this.model.fulfillNeed(dino.index, need)) this.completeNeed(dino);
+    if (this.model.fulfillNeed(dino.index, need)) this.completeNeed(dino, need);
     this.updateInventory();
     const grownScale = this.dinoScale(dino);
     this.tweens.add({
@@ -2113,8 +2117,9 @@ export class NurseryScene extends Phaser.Scene {
     this.scheduleRoam(dino, 350);
   }
 
-  private completeNeed(dino: DinoEntity): void {
+  private completeNeed(dino: DinoEntity, need: DinoNeed): void {
     dino.bubble.setVisible(false);
+    this.sounds.dinoCare(dino.profile.species, need);
     saveProgress(localStorage, this.model.serialize());
     this.flyHeartToScore(dino);
     this.updateProgress(true);
@@ -2431,7 +2436,6 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   private celebrate(dino: DinoEntity): void {
-    this.sounds.giggle();
     for (let index = 0; index < 5; index += 1) {
       const heart = this.add.text(dino.sprite.x + Phaser.Math.Between(-45, 45), dino.sprite.y - 70, '♥', {
         color: '#ef6d82', fontSize: `${Phaser.Math.Between(22, 34)}px`,

@@ -84,6 +84,24 @@ test.beforeEach(async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('egg');
 });
 
+test('keeps the field quiet between effects and mute controls all audio', async ({ page }) => {
+  const { point } = await canvasControls(page);
+  const meadow = point(900, 180);
+  await page.mouse.click(meadow.x, meadow.y);
+  expect(await page.evaluate(() => window.__DINOLAND__!.getState().soundMuted)).toBe(false);
+
+  const mute = point(1170, 35);
+  await page.mouse.click(mute.x, mute.y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    soundMuted: true,
+  });
+
+  await page.mouse.click(mute.x, mute.y);
+  await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
+    soundMuted: false,
+  });
+});
+
 test('hatches into an immediate hunger need with both permanent inventory tools', async ({ page }) => {
   const { point } = await canvasControls(page);
   for (let tap = 1; tap <= 4; tap += 1) {
