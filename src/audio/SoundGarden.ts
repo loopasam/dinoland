@@ -3,9 +3,9 @@ import type { DinoNeed } from '../game/GameModel';
 
 type Wave = OscillatorType;
 
-const MUSIC_STEP_MS = 720;
-const MUSIC_VOLUME = 0.028;
-const MEADOW_MELODY = [392, 0, 523, 0, 587, 523, 440, 0, 392, 440, 523, 0, 330, 0, 392, 0];
+const MUSIC_STEP_MS = 650;
+const MUSIC_VOLUME = 0.085;
+const MEADOW_MELODY = [392, 523, 587, 523, 440, 523, 659, 0, 392, 440, 523, 392, 330, 392, 440, 0];
 
 export class SoundGarden {
   private context?: AudioContext;
@@ -34,7 +34,7 @@ export class SoundGarden {
     if (!this.context) this.createAudioGraph();
     const context = this.context;
     if (!context) return;
-    if (context.state === 'suspended') {
+    if (context.state !== 'running') {
       void context.resume()
         .then(() => this.startSoundtrack())
         .catch(() => undefined);
@@ -158,8 +158,8 @@ export class SoundGarden {
     const note = MEADOW_MELODY[this.musicStep % MEADOW_MELODY.length];
     const step = this.musicStep;
     this.musicStep += 1;
-    if (note) this.musicTone(note, 0.34, 0.16);
-    if (step % 8 === 0) this.musicTone(note ? note / 2 : 196, 0.52, 0.1);
+    if (note) this.musicTone(note, 0.4, 0.22);
+    if (step % 4 === 0) this.musicTone(note ? note / 2 : 196, 0.56, 0.12);
   }
 
   private musicTone(frequency: number, duration: number, volume: number): void {
