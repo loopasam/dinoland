@@ -2,7 +2,7 @@
 
 A browser prototype for placing, hatching, and caring for a growing herd of independently managed dinosaurs in a bounded, single-screen field. The current build includes animated dinosaur rigs, illustrated runtime art, billiards-style interactions, and a procedural effects garden.
 
-There is intentionally no looping background music. Triceratops, T-Rex, and Brachiosaurus each have their own impact and happy-care voice, layered with action cues for eating, playing, drinking, music, and affection. Sounds begin after the first interaction, and the top-right button mutes every effect.
+A discreet meadow soundtrack begins after the first interaction. Triceratops, T-Rex, and Brachiosaurus each have their own impact and happy-care voice, layered with action cues for eating, playing, drinking, music, and affection. The flower launcher has its own playful boom, and the top-right button mutes all music and effects.
 
 ## Play
 

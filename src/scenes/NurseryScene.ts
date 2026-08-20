@@ -363,6 +363,7 @@ export class NurseryScene extends Phaser.Scene {
       cannonBoostReady: this.model.cannonBoostReady,
       magicSlotSymbol: this.boostLabel.text,
       soundMuted: this.sounds.isMuted,
+      soundtrackPlaying: this.sounds.isSoundtrackPlaying,
       heartTextures: this.heartIcons.map((heart) => heart.texture.key),
       lootCelebrationVisible: this.lootAnnouncement?.visible ?? false,
       lootX: Math.round(this.lootBox.x),
@@ -964,7 +965,7 @@ export class NurseryScene extends Phaser.Scene {
     this.updateInventory();
     if (boosted) this.celebrateBoostedShot();
     this.cannonFireLabel.setText(boosted ? '✦' : '➤').setColor('#ffffff');
-    this.sounds.stomp();
+    this.sounds.flowerLaunch(this.cannonPower, boosted);
     this.showSparkles(CANNON.x, CANNON.y, 0xffdc6e);
     this.drawCannonAimGuide();
   }

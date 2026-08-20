@@ -3,14 +3,22 @@ import type { DinoNeed } from '../game/GameModel';
 
 type Wave = OscillatorType;
 
+const MUSIC_STEP_MS = 720;
+const MUSIC_VOLUME = 0.028;
+const MEADOW_MELODY = [392, 0, 523, 0, 587, 523, 440, 0, 392, 440, 523, 0, 330, 0, 392, 0];
+
 export class SoundGarden {
   private context?: AudioContext;
   private effectsBus?: GainNode;
+  private musicBus?: GainNode;
+  private musicTimer?: number;
+  private musicStep = 0;
   private muted = false;
 
   setMuted(muted: boolean): void {
     this.muted = muted;
-    if (!muted) this.unlock();
+    if (muted) this.stopSoundtrack();
+    else this.unlock();
     this.applyBusVolumes();
   }
 
@@ -18,12 +26,20 @@ export class SoundGarden {
     return this.muted;
   }
 
+  get isSoundtrackPlaying(): boolean {
+    return this.musicTimer !== undefined && !this.muted;
+  }
+
   unlock(): void {
     if (!this.context) this.createAudioGraph();
     const context = this.context;
     if (!context) return;
     if (context.state === 'suspended') {
-      void context.resume().catch(() => undefined);
+      void context.resume()
+        .then(() => this.startSoundtrack())
+        .catch(() => undefined);
+    } else {
+      this.startSoundtrack();
     }
   }
 
@@ -50,6 +66,17 @@ export class SoundGarden {
   stomp(): void {
     this.tone(78, 0.13, 'sine', 0.09, 48);
     this.noise(0.08, 0.04, 220);
+  }
+
+  flowerLaunch(power: number, boosted: boolean): void {
+    const strength = Math.min(1, Math.max(0.15, power));
+    this.tone(112, 0.28, 'sine', 0.1 + strength * 0.045, 42);
+    this.noise(0.15, 0.042 + strength * 0.025, 620);
+    this.later(75, () => this.tone(310, 0.1, 'triangle', 0.04, 470));
+    this.later(145, () => this.tone(520, 0.16, 'sine', 0.032, 760));
+    if (boosted) {
+      this.later(210, () => this.tone(880, 0.2, 'sine', 0.045, 1320));
+    }
   }
 
   bounce(): void {
@@ -102,7 +129,9 @@ export class SoundGarden {
   private createAudioGraph(): void {
     this.context = new AudioContext();
     this.effectsBus = this.context.createGain();
+    this.musicBus = this.context.createGain();
     this.effectsBus.connect(this.context.destination);
+    this.musicBus.connect(this.context.destination);
     this.applyBusVolumes();
   }
 
@@ -110,6 +139,45 @@ export class SoundGarden {
     const context = this.context;
     if (!context) return;
     this.effectsBus?.gain.setTargetAtTime(this.muted ? 0 : 1, context.currentTime, 0.025);
+    this.musicBus?.gain.setTargetAtTime(this.muted ? 0 : MUSIC_VOLUME, context.currentTime, 0.08);
+  }
+
+  private startSoundtrack(): void {
+    if (this.muted || this.musicTimer !== undefined || this.context?.state !== 'running') return;
+    this.playMusicStep();
+    this.musicTimer = window.setInterval(() => this.playMusicStep(), MUSIC_STEP_MS);
+  }
+
+  private stopSoundtrack(): void {
+    if (this.musicTimer === undefined) return;
+    window.clearInterval(this.musicTimer);
+    this.musicTimer = undefined;
+  }
+
+  private playMusicStep(): void {
+    const note = MEADOW_MELODY[this.musicStep % MEADOW_MELODY.length];
+    const step = this.musicStep;
+    this.musicStep += 1;
+    if (note) this.musicTone(note, 0.34, 0.16);
+    if (step % 8 === 0) this.musicTone(note ? note / 2 : 196, 0.52, 0.1);
+  }
+
+  private musicTone(frequency: number, duration: number, volume: number): void {
+    const context = this.context;
+    const output = this.musicBus;
+    if (this.muted || !context || context.state !== 'running' || !output) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const start = context.currentTime;
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(frequency, start);
+    oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.995, start + duration);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+    oscillator.connect(gain).connect(output);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.01);
   }
 
   private playCareCue(need: DinoNeed): void {

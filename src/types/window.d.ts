@@ -63,6 +63,7 @@ declare global {
         cannonBoostReady: boolean;
         magicSlotSymbol: string;
         soundMuted: boolean;
+        soundtrackPlaying: boolean;
         heartTextures: string[];
         lootCelebrationVisible: boolean;
         lootX: number;
