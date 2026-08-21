@@ -5,6 +5,14 @@ type ItemName = 'apple' | 'ball' | 'water' | 'music' | 'heart';
 const INVENTORY_X: Record<ItemName, number> = { apple: 44, ball: 103, water: 162, music: 221, heart: 280 };
 const INVENTORY_Y = 675;
 
+async function enterGame(page: Page): Promise<void> {
+  const play = page.getByRole('button', { name: 'Play Dinoland' });
+  await expect(play).toBeVisible();
+  await expect(play).toBeEnabled();
+  await play.click();
+  await expect(play).toBeHidden();
+}
+
 async function canvasControls(page: Page) {
   const box = await page.locator('canvas').boundingBox();
   if (!box) throw new Error('Game canvas not found');
@@ -74,6 +82,7 @@ async function loadField(page: Page, hearts = 0): Promise<void> {
     cannonBoostReady: false,
   })), { savedHearts: hearts });
   await page.reload();
+  await enterGame(page);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('field');
 }
 
@@ -81,6 +90,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/dinoland/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
+  await enterGame(page);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('egg');
 });
 
@@ -175,6 +185,7 @@ test('migrates old scoring and keeps needs cycling after one heart', async ({ pa
     cannonBoostReady: false,
   })));
   await page.reload();
+  await enterGame(page);
 
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     hearts: 0,
@@ -215,6 +226,7 @@ test('allows unlimited copies and recalls landed items without changing inventor
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().fieldItemCount)).toBe(2);
 
   await page.reload();
+  await enterGame(page);
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState().mode)).toBe('field');
   state = await page.evaluate(() => window.__DINOLAND__!.getState());
   expect(state.fieldItemCount).toBe(0);
@@ -296,6 +308,7 @@ test('cycles three dino species and personalities while preserving individual gr
     cannonBoostReady: false,
   })));
   await page.reload();
+  await enterGame(page);
 
   await expect.poll(() => page.evaluate(() => window.__DINOLAND__?.getState())).toMatchObject({
     dinoTypes: ['triceratops', 'trex', 'brachiosaurus'],

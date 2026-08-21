@@ -201,6 +201,7 @@ export class NurseryScene extends Phaser.Scene {
     }
 
     window.__DINOLAND__ = {
+      start: () => this.sounds.unlock(),
       getState: () => this.debugState(),
       forceNeed: (dinoIndex, need) => {
         const result = this.model.requestNeed(dinoIndex, need);

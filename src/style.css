@@ -24,6 +24,182 @@ body {
     radial-gradient(circle at 50% 30%, #dff3a7 0, #9ccc53 60%, #5f8b3d 100%);
 }
 
+.start-screen {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #a9d76c;
+  opacity: 1;
+  transition: opacity 620ms ease, visibility 620ms ease;
+}
+
+.start-screen.is-leaving {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.start-cover,
+.start-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.start-cover {
+  object-fit: cover;
+  transform: scale(1.025);
+  animation: cover-breathe 12s ease-in-out infinite alternate;
+}
+
+.start-shade {
+  background:
+    radial-gradient(circle at 50% 54%, rgb(255 246 168 / 8%) 0 20%, rgb(23 64 44 / 8%) 75%),
+    linear-gradient(180deg, rgb(21 72 61 / 18%) 0, transparent 30%, transparent 66%, rgb(20 52 35 / 34%) 100%);
+}
+
+.start-content {
+  position: relative;
+  display: flex;
+  width: min(90vw, 720px);
+  align-items: center;
+  flex-direction: column;
+  transform: translateY(3vh);
+  color: #fff7cf;
+  text-align: center;
+  filter: drop-shadow(0 5px 0 rgb(42 84 62 / 38%));
+}
+
+.start-kicker,
+.start-tagline {
+  margin: 0;
+  color: #fff8db;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 0 #486d47, 0 4px 12px rgb(26 63 44 / 44%);
+}
+
+.start-kicker {
+  margin-bottom: -0.25rem;
+  font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+  text-transform: uppercase;
+}
+
+.start-title {
+  margin: 0;
+  color: #fff0a7;
+  font-size: clamp(3.2rem, 9.4vw, 7.2rem);
+  font-weight: 1000;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  text-shadow:
+    0 4px 0 #ef9e54,
+    0 8px 0 #80543b,
+    0 13px 24px rgb(32 69 48 / 48%);
+  text-transform: uppercase;
+}
+
+.start-tagline {
+  margin-top: 0.9rem;
+  font-size: clamp(0.84rem, 2vw, 1.2rem);
+  letter-spacing: 0.025em;
+}
+
+.start-button {
+  display: flex;
+  min-width: clamp(170px, 25vw, 230px);
+  min-height: clamp(58px, 8vw, 76px);
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: clamp(1.3rem, 4vh, 2.5rem);
+  padding: 0.75rem 1.8rem;
+  border: 4px solid #fff5ca;
+  border-radius: 999px;
+  color: #fffdf0;
+  background: linear-gradient(180deg, #ff9c77 0%, #ea5f70 68%, #c84463 100%);
+  box-shadow:
+    0 8px 0 #873f51,
+    0 14px 24px rgb(49 67 43 / 35%),
+    inset 0 4px 0 rgb(255 255 255 / 35%);
+  cursor: pointer;
+  font: inherit;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: 1000;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  transform: translateY(0) scale(1);
+  transition: filter 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.start-screen.is-ready .start-button {
+  animation: play-pulse 1.8s ease-in-out infinite;
+}
+
+.start-button:disabled {
+  cursor: wait;
+  filter: saturate(0.7);
+  opacity: 0.75;
+}
+
+.start-button:not(:disabled):hover {
+  filter: brightness(1.08) saturate(1.05);
+  transform: translateY(-3px) scale(1.04);
+}
+
+.start-button:not(:disabled):active {
+  box-shadow:
+    0 3px 0 #873f51,
+    0 8px 16px rgb(49 67 43 / 32%),
+    inset 0 3px 0 rgb(255 255 255 / 28%);
+  transform: translateY(5px) scale(0.98);
+}
+
+.start-button:focus-visible {
+  outline: 5px solid #72d9de;
+  outline-offset: 5px;
+}
+
+.start-button-icon {
+  display: grid;
+  width: 1.5em;
+  height: 1.5em;
+  place-items: center;
+  padding-left: 0.12em;
+  border-radius: 50%;
+  color: #e65368;
+  background: #fff7cf;
+  box-shadow: inset 0 -3px 0 #efcb8e;
+  font-size: 0.72em;
+}
+
+@keyframes cover-breathe {
+  from { transform: scale(1.025) translate3d(-0.25%, 0, 0); }
+  to { transform: scale(1.065) translate3d(0.25%, -0.35%, 0); }
+}
+
+@keyframes play-pulse {
+  0%, 100% {
+    filter: brightness(1);
+    box-shadow: 0 8px 0 #873f51, 0 14px 24px rgb(49 67 43 / 35%), inset 0 4px 0 rgb(255 255 255 / 35%);
+  }
+  50% {
+    filter: brightness(1.08);
+    box-shadow: 0 8px 0 #873f51, 0 16px 34px rgb(255 236 139 / 58%), inset 0 4px 0 rgb(255 255 255 / 42%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-cover,
+  .start-screen.is-ready .start-button {
+    animation: none;
+  }
+}
+
 canvas {
   display: block;
   margin: auto;
@@ -46,7 +222,12 @@ canvas {
 }
 
 @media (orientation: portrait) and (max-width: 700px) {
+  .start-screen {
+    display: none;
+  }
+
   #rotate-note {
     display: grid;
+    z-index: 1100;
   }
 }

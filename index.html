@@ -8,6 +8,24 @@
     <title>Dinoland</title>
   </head>
   <body>
+    <section id="start-screen" class="start-screen" aria-labelledby="game-title">
+      <img
+        class="start-cover"
+        src="%BASE_URL%assets/dinoland-cover.png"
+        alt=""
+        aria-hidden="true"
+      />
+      <div class="start-shade" aria-hidden="true"></div>
+      <div class="start-content">
+        <p class="start-kicker">Welcome to</p>
+        <h1 id="game-title" class="start-title">Dinoland</h1>
+        <p class="start-tagline">A little world of big adventures</p>
+        <button id="start-game" class="start-button" type="button" aria-label="Play Dinoland" disabled>
+          <span class="start-button-icon" aria-hidden="true">▶</span>
+          <span>Play</span>
+        </button>
+      </div>
+    </section>
     <main id="game" aria-label="Dinoland interactive dinosaur field"></main>
     <div id="rotate-note" role="status">Turn your device sideways to play</div>
     <script type="module" src="/src/main.ts"></script>

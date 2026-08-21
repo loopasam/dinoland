@@ -4,6 +4,7 @@ import type { DinoPersonality, DinoSpecies } from '../game/DinoSpecies';
 declare global {
   interface Window {
     __DINOLAND__?: {
+      start: () => void;
       getState: () => {
         mode: PlayMode;
         eggTaps: number;
